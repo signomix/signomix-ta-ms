@@ -26,6 +26,7 @@ public class MailerService implements NotificationIface {
             mailer.send(Mail.withHtml(toAddress, subject, body));
             return "OK";
         } catch (Exception ex) {
+            ex.printStackTrace();
             LOG.error(ex.getMessage());
             return "ERROR";
         }
