@@ -61,6 +61,8 @@ public class MessageProcessor {
     @ConfigProperty(name = "signomix.queue.admin_email")
     String adminEmailQueue;
 
+    String eventsQueue="events";
+
     private Channel channel;
 
     public void onApplicationStart(@Observes StartupEvent event) {
@@ -76,6 +78,11 @@ public class MessageProcessor {
             channel.queueDeclare(notificationsQueue, true, false, false, new HashMap<>());
             channel.queueDeclare(mailingQueue, true, false, false, new HashMap<>());
             channel.queueDeclare(adminEmailQueue, true, false, false, new HashMap<>());
+            
+            channel.exchangeDeclare("events", "fanout");
+            channel.queueDeclare("messaging", true, false, false, null);
+            channel.queueBind("messaging", "events", "");
+
         } catch (IOException e) {
             e.printStackTrace();
             LOG.error(e.getMessage());
@@ -104,6 +111,13 @@ public class MessageProcessor {
                 public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
                     // just print the received message.
                     processAdminEmail(new String(body, StandardCharsets.UTF_8));
+                }
+            });
+            channel.basicConsume("messaging", true, new DefaultConsumer(channel) {
+                @Override
+                public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
+                    // just print the received message.
+                    processEvent(new String(body, StandardCharsets.UTF_8));
                 }
             });
         } catch (IOException e) {
@@ -222,6 +236,10 @@ public class MessageProcessor {
     private void processDirectEmail(MessageWrapper wrapper) {
         LOG.info("DIRECT_EMAIL");
         mailerService.sendEmail(wrapper.user.email, wrapper.subject, wrapper.message);
+    }
+
+    private void processEvent(String message) {
+        LOG.info("EVENT: "+message);
     }
 
 }
