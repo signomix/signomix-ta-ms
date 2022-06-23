@@ -1,12 +1,15 @@
 package com.signomix.messaging.email;
 
-import com.signomix.annotation.OutboundAdapter;
-import com.signomix.messaging.NotificationIface;
-import io.quarkus.mailer.Mail;
-import io.quarkus.mailer.Mailer;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
+
 import org.jboss.logging.Logger;
+
+import com.signomix.annotation.OutboundAdapter;
+import com.signomix.messaging.NotificationIface;
+
+import io.quarkus.mailer.Mail;
+import io.quarkus.mailer.reactive.ReactiveMailer;
 
 @OutboundAdapter
 @ApplicationScoped
@@ -14,8 +17,10 @@ public class MailerService implements NotificationIface {
 
     private static final Logger LOG = Logger.getLogger(MailerService.class);
 
+    //@Inject
+    //Mailer mailer;
     @Inject
-    Mailer mailer;
+    ReactiveMailer mailer;
 
     public MailerService() {
     }
