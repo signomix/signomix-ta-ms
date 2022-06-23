@@ -9,7 +9,7 @@ import com.signomix.annotation.OutboundAdapter;
 import com.signomix.messaging.NotificationIface;
 
 import io.quarkus.mailer.Mail;
-import io.quarkus.mailer.reactive.ReactiveMailer;
+import io.quarkus.mailer.Mailer;
 
 @OutboundAdapter
 @ApplicationScoped
@@ -17,23 +17,27 @@ public class MailerService implements NotificationIface {
 
     private static final Logger LOG = Logger.getLogger(MailerService.class);
 
-    //@Inject
-    //Mailer mailer;
     @Inject
-    ReactiveMailer mailer;
+    Mailer mailer;
 
     public MailerService() {
     }
 
+    @Override
     public String sendEmail(String toAddress, String subject, String body) {
+        //TODO: use EventBus
+        LOG.info("sendEmail1: " + toAddress + " " + subject);
+        new Thread(() -> sendInThread(toAddress, subject, body)).start();
+        return "OK";
+    }
+
+    private void sendInThread(String toAddress, String subject, String body){
         try {
-            LOG.info("sendEmail: " + toAddress + " " + subject);
+            LOG.info("sendEmail2: " + toAddress + " " + subject);
             mailer.send(Mail.withHtml(toAddress, subject, body));
-            return "OK";
         } catch (Exception ex) {
             ex.printStackTrace();
             LOG.error(ex.getMessage());
-            return "ERROR";
         }
     }
 
