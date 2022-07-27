@@ -123,7 +123,8 @@ public class MessageProcessor {
             switch (messageChannel.toUpperCase()) {
                 case "SMTP":
                     if (null != address && !address.isEmpty()) {
-                        mailerService.send(address, wrapper.eui, wrapper.message);
+                        //mailerService.send(address, wrapper.eui, wrapper.message);
+                        mailerService.sendEmail(address, wrapper.eui, wrapper.message);
                     }
                     break;
                 case "WEBHOOK":
