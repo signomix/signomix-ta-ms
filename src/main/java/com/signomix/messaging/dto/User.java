@@ -28,6 +28,7 @@ public class User {
     public boolean autologin;
     public String preferredLanguage;
     public long organization;
+    public String sessionToken;
 
     public User() {
     }
