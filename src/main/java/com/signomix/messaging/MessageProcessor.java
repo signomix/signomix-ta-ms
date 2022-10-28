@@ -11,10 +11,12 @@ import javax.ws.rs.WebApplicationException;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.signomix.common.iot.Device;
 import com.signomix.messaging.discord.DiscordService;
 import com.signomix.messaging.dto.DiscordMessage;
 import com.signomix.messaging.dto.Message;
 import com.signomix.messaging.dto.MessageWrapper;
+import com.signomix.messaging.dto.EventWrapper;
 import com.signomix.messaging.dto.User;
 import com.signomix.messaging.email.MailerService;
 import com.signomix.messaging.pushover.PushoverService;
@@ -67,6 +69,15 @@ public class MessageProcessor {
     public void processEvent(byte[] bytes) {
         String message = new String(bytes, StandardCharsets.UTF_8);
         LOG.info("EVENT: " + message);
+        EventWrapper wrapper;
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            wrapper = objectMapper.readValue(message, EventWrapper.class);
+        } catch (JsonProcessingException ex) {
+            LOG.error(ex.getMessage());
+            return;
+        }
+        LOG.info(wrapper.type+" "+wrapper.id+" "+wrapper.payload);
     }
 
     @Incoming("admin_email")
@@ -103,6 +114,8 @@ public class MessageProcessor {
         String address = null;
         String messageChannel = null;
         User user = getUser(wrapper.user);
+        Device device = getDevice(wrapper.eui);
+        sendDeviceDefined(device, wrapper);
         String[] channelConfig = user.getChannelConfig(wrapper.type);
         if (channelConfig == null || channelConfig.length < 2) {
             LOG.info("Channel not configured " + wrapper.type + " " + channelConfig.length);
@@ -123,7 +136,7 @@ public class MessageProcessor {
             switch (messageChannel.toUpperCase()) {
                 case "SMTP":
                     if (null != address && !address.isEmpty()) {
-                        //mailerService.send(address, wrapper.eui, wrapper.message);
+                        // mailerService.send(address, wrapper.eui, wrapper.message);
                         mailerService.sendEmail(address, wrapper.eui, wrapper.message);
                     }
                     break;
@@ -170,16 +183,26 @@ public class MessageProcessor {
         }
     }
 
+    private void sendDeviceDefined(Device device, MessageWrapper wrapper) {
+        if (null == device || null == device.getConfiguration()) {
+            return;
+        }
+        // TODO: get emails
+        // TODO: get phone numbers
+        String email = "";
+        mailerService.sendEmail(email, wrapper.eui, wrapper.message);
+    }
+
     private void processDirectEmail(MessageWrapper wrapper) {
         LOG.info("DIRECT_EMAIL");
         mailerService.sendEmail(wrapper.user.email, wrapper.subject, wrapper.message);
     }
 
     private User getUser(User user) {
-        if(null!=user.email && !user.email.isEmpty()){
+        if (null != user.email && !user.email.isEmpty()) {
             return user;
         }
-        String uid=user.uid;
+        String uid = user.uid;
         UserServiceClient client;
         User completedUser = null;
         try {
@@ -201,6 +224,29 @@ public class MessageProcessor {
         }
         System.out.println(completedUser.toString());
         return completedUser;
+    }
+
+    private Device getDevice(String eui) {
+        DeviceServiceClient client;
+        Device device = null;
+        try {
+            client = RestClientBuilder.newBuilder()
+                    .baseUri(new URI(authHost))
+                    .followRedirects(true)
+                    .build(DeviceServiceClient.class);
+            device = client.getDevice(eui, appKey);
+        } catch (URISyntaxException ex) {
+            LOG.error(ex.getMessage());
+            // TODO: notyfikacja użytkownika o błędzie
+        } catch (ProcessingException ex) {
+            LOG.error(ex.getMessage());
+        } catch (WebApplicationException ex) {
+            LOG.error(ex.getMessage());
+        } catch (Exception ex) {
+            LOG.error(ex.getMessage());
+            // TODO: notyfikacja użytkownika o błędzie
+        }
+        return device;
     }
 
 }
