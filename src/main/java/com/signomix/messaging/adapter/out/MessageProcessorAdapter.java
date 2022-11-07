@@ -1,22 +1,23 @@
-package com.signomix.messaging;
+package com.signomix.messaging.adapter.out;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 
-import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.ws.rs.ProcessingException;
 import javax.ws.rs.WebApplicationException;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.eclipse.microprofile.reactive.messaging.Incoming;
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
 import org.jboss.logging.Logger;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.signomix.common.iot.Device;
+import com.signomix.messaging.DeviceServiceClient;
+import com.signomix.messaging.UserServiceClient;
+import com.signomix.messaging.application.port.out.MessageProcessorPort;
 import com.signomix.messaging.discord.DiscordService;
 import com.signomix.messaging.dto.DiscordMessage;
 import com.signomix.messaging.dto.EventWrapper;
@@ -29,15 +30,8 @@ import com.signomix.messaging.slack.SlackService;
 import com.signomix.messaging.telegram.TelegramService;
 import com.signomix.messaging.webhook.WebhookService;
 
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.eclipse.microprofile.reactive.messaging.Incoming;
-import org.eclipse.microprofile.rest.client.RestClientBuilder;
-import org.jboss.logging.Logger;
-
-@ApplicationScoped
-public class MessageProcessor {
-
-    private static final Logger LOG = Logger.getLogger(MessageProcessor.class);
+public class MessageProcessorAdapter implements MessageProcessorPort{
+    private static final Logger LOG = Logger.getLogger(MessageProcessorAdapter.class);
 
     @Inject
     MailerService mailerService;
@@ -56,6 +50,7 @@ public class MessageProcessor {
     @ConfigProperty(name = "signomix.auth.host", defaultValue = "not_configured")
     String authHost;
 
+    @Override
     public void processMailing(byte[] bytes) {
         String message = new String(bytes, StandardCharsets.UTF_8);
         LOG.info("MAILING " + message);
@@ -70,7 +65,7 @@ public class MessageProcessor {
         mailerService.sendEmail(wrapper.user.email, wrapper.subject, wrapper.message);
     }
 
-    @Incoming("events")
+    @Override
     public void processEvent(byte[] bytes) {
         String message = new String(bytes, StandardCharsets.UTF_8);
         LOG.info("EVENT: " + message);
@@ -85,7 +80,7 @@ public class MessageProcessor {
         LOG.info(wrapper.type+" "+wrapper.id+" "+wrapper.payload);
     }
 
-    @Incoming("admin_email")
+    @Override
     public void processAdminEmail(byte[] bytes) {
         String message = new String(bytes, StandardCharsets.UTF_8);
         LOG.info("ADMIN_EMAIL " + message);
@@ -100,7 +95,7 @@ public class MessageProcessor {
         mailerService.sendEmail(wrapper.user.email, wrapper.subject, wrapper.message);
     }
 
-    @Incoming("notifications")
+    @Override
     public void processNotification(byte[] bytes) {
         String message = new String(bytes, StandardCharsets.UTF_8);
         LOG.info(message);
@@ -188,16 +183,6 @@ public class MessageProcessor {
         }
     }
 
-    private void sendDeviceDefined(Device device, MessageWrapper wrapper) {
-        if (null == device || null == device.getConfiguration()) {
-            return;
-        }
-        // TODO: get emails
-        // TODO: get phone numbers
-        String email = "";
-        mailerService.sendEmail(email, wrapper.eui, wrapper.message);
-    }
-
     private void processDirectEmail(MessageWrapper wrapper) {
         LOG.info("DIRECT_EMAIL");
         mailerService.sendEmail(wrapper.user.email, wrapper.subject, wrapper.message);
@@ -254,4 +239,14 @@ public class MessageProcessor {
         return device;
     }
 
+    private void sendDeviceDefined(Device device, MessageWrapper wrapper) {
+        if (null == device || null == device.getConfiguration()) {
+            return;
+        }
+        // TODO: get emails
+        // TODO: get phone numbers
+        String email = "";
+        mailerService.sendEmail(email, wrapper.eui, wrapper.message);
+    }
+    
 }
