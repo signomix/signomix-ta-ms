@@ -4,11 +4,16 @@ import java.lang.reflect.InvocationTargetException;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
+import javax.inject.Inject;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import com.signomix.messaging.application.port.out.MessageProcessorPort;
+import com.signomix.messaging.email.MailerService;
+import com.signomix.messaging.pushover.PushoverService;
+import com.signomix.messaging.slack.SlackService;
+import com.signomix.messaging.telegram.TelegramService;
 
 import io.quarkus.runtime.StartupEvent;
 
@@ -16,7 +21,24 @@ import io.quarkus.runtime.StartupEvent;
 public class ProcessNotificationMessageUC {
     private static final Logger LOG = Logger.getLogger(ProcessNotificationMessageUC.class);
 
-    @ConfigProperty(name = "messaging.notification.usecase.class")
+    @Inject
+    MailerService mailerService;
+
+    //@Inject
+    //TelegramService telegramService;
+
+    //@Inject
+    //SlackService slackService;
+
+    //@Inject
+    //PushoverService pushoverService;
+
+    @ConfigProperty(name = "signomix.app.key", defaultValue = "not_configured")
+    String appKey;
+    @ConfigProperty(name = "signomix.auth.host", defaultValue = "not_configured")
+    String authHost;
+
+    @ConfigProperty(name = "messaging.processor.class")
     String usecaseClassName;
 
     private MessageProcessorPort messageAdapter=null;
@@ -24,9 +46,13 @@ public class ProcessNotificationMessageUC {
     void onStart(@Observes StartupEvent ev) {   
         // If there are several adapters to choose from, I can decide which one to use.
         try {
-            messageAdapter=(MessageProcessorPort)Class.forName(usecaseClassName).getConstructor(String.class).newInstance();
+            LOG.info("messagingProcessorClassName:"+usecaseClassName);
+            messageAdapter=(MessageProcessorPort)Class.forName(usecaseClassName).getDeclaredConstructor().newInstance();
+            messageAdapter.setMailerService(mailerService);
+            messageAdapter.setApplicationKey(appKey);
+            messageAdapter.setAuthHost(authHost);
         } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException
-                | NoSuchMethodException | SecurityException | ClassNotFoundException e) {
+                | NoSuchMethodException | SecurityException | ClassNotFoundException|NullPointerException e) {
             LOG.error(e.getMessage());
             return;
         }

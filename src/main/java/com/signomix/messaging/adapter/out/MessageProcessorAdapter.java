@@ -4,11 +4,9 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 
-import javax.inject.Inject;
 import javax.ws.rs.ProcessingException;
 import javax.ws.rs.WebApplicationException;
 
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
 import org.jboss.logging.Logger;
 
@@ -30,25 +28,19 @@ import com.signomix.messaging.slack.SlackService;
 import com.signomix.messaging.telegram.TelegramService;
 import com.signomix.messaging.webhook.WebhookService;
 
-public class MessageProcessorAdapter implements MessageProcessorPort{
+public class MessageProcessorAdapter implements MessageProcessorPort {
     private static final Logger LOG = Logger.getLogger(MessageProcessorAdapter.class);
 
-    @Inject
     MailerService mailerService;
-
-    @Inject
     TelegramService telegramService;
-
-    @Inject
     SlackService slackService;
-
-    @Inject
     PushoverService pushoverService;
 
-    @ConfigProperty(name = "signomix.app.key", defaultValue = "not_configured")
     String appKey;
-    @ConfigProperty(name = "signomix.auth.host", defaultValue = "not_configured")
     String authHost;
+
+    public MessageProcessorAdapter(){
+    }
 
     @Override
     public void processMailing(byte[] bytes) {
@@ -77,7 +69,7 @@ public class MessageProcessorAdapter implements MessageProcessorPort{
             LOG.error(ex.getMessage());
             return;
         }
-        LOG.info(wrapper.type+" "+wrapper.id+" "+wrapper.payload);
+        LOG.info(wrapper.type + " " + wrapper.id + " " + wrapper.payload);
     }
 
     @Override
@@ -248,5 +240,21 @@ public class MessageProcessorAdapter implements MessageProcessorPort{
         String email = "";
         mailerService.sendEmail(email, wrapper.eui, wrapper.message);
     }
-    
+
+    @Override
+    public void setMailerService(MailerService service) {
+        this.mailerService = service;
+    }
+
+    @Override
+    public void setApplicationKey(String key) {
+        this.appKey = key;
+
+    }
+
+    @Override
+    public void setAuthHost(String authHost) {
+        this.authHost = authHost;
+    }
+
 }
