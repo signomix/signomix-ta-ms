@@ -12,6 +12,7 @@ import org.jboss.logging.Logger;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.signomix.common.db.IotDatabaseIface;
 import com.signomix.common.iot.Device;
 import com.signomix.messaging.DeviceServiceClient;
 import com.signomix.messaging.UserServiceClient;
@@ -35,6 +36,7 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
     TelegramService telegramService;
     SlackService slackService;
     PushoverService pushoverService;
+    IotDatabaseIface dao;
 
     String appKey;
     String authHost;
@@ -255,6 +257,11 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
     @Override
     public void setAuthHost(String authHost) {
         this.authHost = authHost;
+    }
+
+    @Override
+    public void setDao(IotDatabaseIface dao) {
+        this.dao=dao;
     }
 
 }

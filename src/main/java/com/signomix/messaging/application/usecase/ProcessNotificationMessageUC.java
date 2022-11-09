@@ -9,18 +9,26 @@ import javax.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
+import com.signomix.common.db.IotDatabaseDao;
+import com.signomix.common.db.IotDatabaseIface;
 import com.signomix.messaging.application.port.out.MessageProcessorPort;
 import com.signomix.messaging.email.MailerService;
 import com.signomix.messaging.pushover.PushoverService;
 import com.signomix.messaging.slack.SlackService;
 import com.signomix.messaging.telegram.TelegramService;
 
+import io.agroal.api.AgroalDataSource;
 import io.quarkus.runtime.StartupEvent;
 
 @ApplicationScoped
 public class ProcessNotificationMessageUC {
     private static final Logger LOG = Logger.getLogger(ProcessNotificationMessageUC.class);
 
+    @Inject
+    AgroalDataSource ds;
+
+    IotDatabaseIface dao;
+    
     @Inject
     MailerService mailerService;
 
@@ -44,6 +52,8 @@ public class ProcessNotificationMessageUC {
     private MessageProcessorPort messageAdapter=null;
 
     void onStart(@Observes StartupEvent ev) {   
+        dao = new IotDatabaseDao();
+        dao.setDatasource(ds);
         // If there are several adapters to choose from, I can decide which one to use.
         try {
             LOG.info("messagingProcessorClassName:"+usecaseClassName);
@@ -51,6 +61,7 @@ public class ProcessNotificationMessageUC {
             messageAdapter.setMailerService(mailerService);
             messageAdapter.setApplicationKey(appKey);
             messageAdapter.setAuthHost(authHost);
+            messageAdapter.setDao(dao);
         } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException
                 | NoSuchMethodException | SecurityException | ClassNotFoundException|NullPointerException e) {
             LOG.error(e.getMessage());

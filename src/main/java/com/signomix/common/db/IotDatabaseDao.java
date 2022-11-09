@@ -177,7 +177,7 @@ public class IotDatabaseDao implements IotDatabaseIface {
 
     @Override
     public Device getDevice(String deviceEUI) throws IotDatabaseException {
-        String query = buildDeviceQuery() + " AND ( upper(d.eui) = upper(?))";
+        String query = buildDeviceQuery2() + " AND ( upper(d.eui) = upper(?))";
         if (deviceEUI == null || deviceEUI.isEmpty()) {
             return null;
         }
@@ -185,7 +185,7 @@ public class IotDatabaseDao implements IotDatabaseIface {
             pstmt.setString(1, deviceEUI);
             ResultSet rs = pstmt.executeQuery();
             if (rs.next()) {
-                Device device = buildDevice(rs);
+                Device device = buildDevice2(rs);
                 return device;
             } else {
                 return null;
@@ -324,13 +324,59 @@ public class IotDatabaseDao implements IotDatabaseIface {
         return d;
     }
 
+    private Device buildDevice2(ResultSet rs) throws SQLException {
+        // select
+        // eui,name,userid,type,team,channels,code,decoder,key,description,
+        // lastseen,tinterval,lastframe,template,pattern,downlink,commandscript,appid,groups,alert,
+        // appeui,devid,active,project,latitude,longitude,altitude,state,retention,administrators,
+        // framecheck,configuration,organization,organizationapp,a.config from devices
+        // as d left join applications as a
+        Device d = new Device();
+        d.setEUI(rs.getString(1));
+        d.setName(rs.getString(2));
+        d.setUserID(rs.getString(3));
+        d.setType(rs.getString(4));
+        d.setTeam(rs.getString(5));
+        d.setChannels(rs.getString(6));
+        d.setCode(rs.getString(7));
+        d.setEncoder(rs.getString(8));
+        // d.setKey(rs.getString(9));
+        d.setDescription(rs.getString(9));
+        d.setLastSeen(rs.getLong(10));
+        d.setTransmissionInterval(rs.getLong(11));
+        d.setLastFrame(rs.getLong(12));
+        d.setTemplate(rs.getString(13));
+        d.setPattern(rs.getString(14));
+        d.setDownlink(rs.getString(15));
+        d.setCommandScript(rs.getString(16));
+        d.setApplicationID(rs.getString(17));
+        d.setGroups(rs.getString(18));
+        d.setAlertStatus(rs.getInt(19));
+        d.setApplicationEUI(rs.getString(20));
+        d.setDeviceID(rs.getString(21));
+        d.setActive(rs.getBoolean(22));
+        d.setProject(rs.getString(23));
+        d.setLatitude(rs.getDouble(24));
+        d.setLongitude(rs.getDouble(25));
+        d.setAltitude(rs.getDouble(26));
+        d.setState(rs.getDouble(27));
+        d.setRetentionTime(rs.getLong(28));
+        d.setAdministrators(rs.getString(29));
+        d.setCheckFrames(rs.getBoolean(30));
+        d.setConfiguration(rs.getString(31));
+        d.setOrganizationId(rs.getLong(32));
+        d.setOrgApplicationId(rs.getLong(33));
+        d.setApplicationConfig(rs.getString(34));
+        return d;
+    }
+
     @Override
     public IotEvent getFirstCommand(String deviceEUI) throws IotDatabaseException {
         String query = "select id,category,type,origin,payload,createdat from commands where origin like ? order by createdat limit 1";
         IotEvent result = null;
         try (Connection conn = dataSource.getConnection(); PreparedStatement pst = conn.prepareStatement(query);) {
             pst.setString(1, "%@" + deviceEUI);
-            //pst.setString(1, deviceEUI);
+            // pst.setString(1, deviceEUI);
             ResultSet rs = pst.executeQuery();
             if (rs.next()) {
                 // result = new IotEvent(deviceEUI, rs.getString(2), rs.getString(3), null,
@@ -348,45 +394,47 @@ public class IotDatabaseDao implements IotDatabaseIface {
             throw new IotDatabaseException(IotDatabaseException.SQL_EXCEPTION, e.getMessage(), e);
         }
     }
+
     @Override
     public long getMaxCommandId() throws IotDatabaseException {
         String query = "SELECT  max(commands.id), max(commandslog.id) FROM commands CROSS JOIN commandslog";
         long result = 0;
-        long v1=0;
-        long v2=0;
+        long v1 = 0;
+        long v2 = 0;
         try (Connection conn = dataSource.getConnection(); PreparedStatement pst = conn.prepareStatement(query);) {
             ResultSet rs = pst.executeQuery();
             if (rs.next()) {
-                v1=rs.getLong(1);
-                v1=rs.getLong(2);
+                v1 = rs.getLong(1);
+                v1 = rs.getLong(2);
             }
-            if(v1>v2){
-                result=v1;
-            }else{
-                result=v2;
+            if (v1 > v2) {
+                result = v1;
+            } else {
+                result = v2;
             }
         } catch (SQLException e) {
             throw new IotDatabaseException(IotDatabaseException.SQL_EXCEPTION);
         }
         return result;
     }
+
     @Override
     public long getMaxCommandId(String deviceEui) throws IotDatabaseException {
         String query = "SELECT  max(commands.id), max(commandslog.id) FROM commands CROSS JOIN commandslog "
-        +"WHERE commands.origin=commandslog.origin AND commands.origin like %@"+deviceEui;
+                + "WHERE commands.origin=commandslog.origin AND commands.origin like %@" + deviceEui;
         long result = 0;
-        long v1=0;
-        long v2=0;
+        long v1 = 0;
+        long v2 = 0;
         try (Connection conn = dataSource.getConnection(); PreparedStatement pst = conn.prepareStatement(query);) {
             ResultSet rs = pst.executeQuery();
             if (rs.next()) {
-                v1=rs.getLong(1);
-                v1=rs.getLong(2);
+                v1 = rs.getLong(1);
+                v1 = rs.getLong(2);
             }
-            if(v1>v2){
-                result=v1;
-            }else{
-                result=v2;
+            if (v1 > v2) {
+                result = v1;
+            } else {
+                result = v2;
             }
         } catch (SQLException e) {
             throw new IotDatabaseException(IotDatabaseException.SQL_EXCEPTION);
@@ -439,9 +487,9 @@ public class IotDatabaseDao implements IotDatabaseIface {
             overwriteMode = true;
         }
         command = command.substring(1);
-        String origin=commandEvent.getOrigin();
-        if(null==origin||origin.isEmpty()){
-            origin=deviceEUI;
+        String origin = commandEvent.getOrigin();
+        if (null == origin || origin.isEmpty()) {
+            origin = deviceEUI;
         }
         try (Connection conn = dataSource.getConnection(); PreparedStatement pst = conn.prepareStatement(query);) {
             pst.setLong(1, commandEvent.getId());
@@ -584,8 +632,20 @@ public class IotDatabaseDao implements IotDatabaseIface {
     }
 
     private String buildDeviceQuery() {
+
         String query = "SELECT"
                 + " d.eui, d.name, d.userid, d.type, d.team, d.channels, d.code, d.decoder, d.key, d.description, d.lastseen, d.tinterval,"
+                + " d.lastframe, d.template, d.pattern, d.downlink, d.commandscript, d.appid, d.groups, d.alert,"
+                + " d.appeui, d.devid, d.active, d.project, d.latitude, d.longitude, d.altitude, d.state, d.retention,"
+                + " d.administrators, d.framecheck, d.configuration, d.organization, d.organizationapp, a.configuration FROM devices AS d"
+                + " LEFT JOIN applications AS a WHERE d.organizationapp=a.id";
+
+        return query;
+    }
+
+    private String buildDeviceQuery2() {
+        String query = "SELECT"
+                + " d.eui, d.name, d.userid, d.type, d.team, d.channels, d.code, d.decoder, d.description, d.lastseen, d.tinterval,"
                 + " d.lastframe, d.template, d.pattern, d.downlink, d.commandscript, d.appid, d.groups, d.alert,"
                 + " d.appeui, d.devid, d.active, d.project, d.latitude, d.longitude, d.altitude, d.state, d.retention,"
                 + " d.administrators, d.framecheck, d.configuration, d.organization, d.organizationapp, a.configuration FROM devices AS d"
