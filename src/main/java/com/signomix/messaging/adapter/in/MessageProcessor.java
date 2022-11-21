@@ -18,6 +18,7 @@ public class MessageProcessor {
     @Inject
     ProcessNotificationMessageUC processMessageUseCase;
 
+    @Incoming("mailing")
     public void processMailing(byte[] bytes) {
         processMessageUseCase.processMailing(bytes);
     }

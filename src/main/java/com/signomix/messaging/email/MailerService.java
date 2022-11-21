@@ -36,7 +36,7 @@ public class MailerService implements NotificationIface {
             LOG.info("sendEmail2: " + toAddress + " " + subject);
             mailer.send(Mail.withHtml(toAddress, subject, body));
         } catch (Exception ex) {
-            ex.printStackTrace();
+            //ex.printStackTrace();
             LOG.error(ex.getMessage());
         }
     }
