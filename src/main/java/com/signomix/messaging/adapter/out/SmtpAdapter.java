@@ -1,4 +1,4 @@
-package com.signomix.messaging.email;
+package com.signomix.messaging.adapter.out;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -13,14 +13,14 @@ import io.quarkus.mailer.Mailer;
 
 @OutboundAdapter
 @ApplicationScoped
-public class MailerService implements NotificationIface {
+public class SmtpAdapter implements NotificationIface {
 
-    private static final Logger LOG = Logger.getLogger(MailerService.class);
+    private static final Logger LOG = Logger.getLogger(SmtpAdapter.class);
 
     @Inject
     Mailer mailer;
 
-    public MailerService() {
+    public SmtpAdapter() {
     }
 
     @Override

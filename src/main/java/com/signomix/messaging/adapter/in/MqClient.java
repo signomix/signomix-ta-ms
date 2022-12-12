@@ -6,17 +6,17 @@ import javax.inject.Inject;
 import org.eclipse.microprofile.reactive.messaging.Incoming;
 import org.jboss.logging.Logger;
 
-import com.signomix.messaging.application.usecase.ProcessNotificationMessageUC;
+import com.signomix.messaging.application.usecase.MailingUC;
 
 @ApplicationScoped
-public class MessageProcessor {
+public class MqClient {
 
-    private static final Logger LOG = Logger.getLogger(MessageProcessor.class);
+    private static final Logger LOG = Logger.getLogger(MqClient.class);
 
 
 
     @Inject
-    ProcessNotificationMessageUC processMessageUseCase;
+    MailingUC processMessageUseCase;
 
     @Incoming("mailing")
     public void processMailing(byte[] bytes) {

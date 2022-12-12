@@ -1,4 +1,4 @@
-package com.signomix.messaging;
+package com.signomix.messaging.application.port.out;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -8,17 +8,17 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
 
-import com.signomix.messaging.dto.User;
-
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
+import com.signomix.common.iot.Device;
+
 @RegisterRestClient
-@Path("/api/user")
-public interface UserServiceClient {
+@Path("/api/iot/device")
+public interface DeviceServiceClient {
 
     @GET
     @Produces("application/json")
-    @Path("/{uid}")
-    User getUser(@PathParam("uid") String uid, @QueryParam("appkey") String appKey) throws ProcessingException, WebApplicationException;
+    @Path("/{eui}")
+    Device getDevice(@PathParam("eui") String uid, @QueryParam("appkey") String appKey) throws ProcessingException, WebApplicationException;
 
 }

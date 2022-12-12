@@ -1,12 +1,17 @@
 package com.signomix.messaging.adapter.out;
 
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.ws.rs.ProcessingException;
 import javax.ws.rs.WebApplicationException;
 
+import org.cricketmsf.microsite.cms.Document;
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
 import org.jboss.logging.Logger;
 
@@ -14,16 +19,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.signomix.common.db.IotDatabaseIface;
 import com.signomix.common.iot.Device;
-import com.signomix.messaging.DeviceServiceClient;
-import com.signomix.messaging.UserServiceClient;
+import com.signomix.messaging.application.port.out.ContentServiceClient;
+import com.signomix.messaging.application.port.out.DeviceServiceClient;
 import com.signomix.messaging.application.port.out.MessageProcessorPort;
-import com.signomix.messaging.discord.DiscordService;
-import com.signomix.messaging.dto.DiscordMessage;
+import com.signomix.messaging.application.port.out.UserServiceClient;
 import com.signomix.messaging.dto.EventWrapper;
 import com.signomix.messaging.dto.Message;
 import com.signomix.messaging.dto.MessageWrapper;
 import com.signomix.messaging.dto.User;
-import com.signomix.messaging.email.MailerService;
 import com.signomix.messaging.pushover.PushoverService;
 import com.signomix.messaging.slack.SlackService;
 import com.signomix.messaging.telegram.TelegramService;
@@ -32,7 +35,7 @@ import com.signomix.messaging.webhook.WebhookService;
 public class MessageProcessorAdapter implements MessageProcessorPort {
     private static final Logger LOG = Logger.getLogger(MessageProcessorAdapter.class);
 
-    MailerService mailerService;
+    SmtpAdapter mailerService;
     TelegramService telegramService;
     SlackService slackService;
     PushoverService pushoverService;
@@ -41,7 +44,7 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
     String appKey;
     String authHost;
 
-    public MessageProcessorAdapter(){
+    public MessageProcessorAdapter() {
     }
 
     @Override
@@ -56,7 +59,12 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
             LOG.error(ex.getMessage());
             return;
         }
-        mailerService.sendEmail(wrapper.user.email, wrapper.subject, wrapper.message);
+        if ("NEXTMAILING".equalsIgnoreCase(wrapper.type)) {
+            processMailing(wrapper);
+        }
+        if ("MAILING".equalsIgnoreCase(wrapper.type)) {
+            mailerService.sendEmail(wrapper.user.email, wrapper.subject, wrapper.message);
+        }
     }
 
     @Override
@@ -126,60 +134,146 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
                 }
                 address = address + channelConfig[channelConfig.length - 1];
             }
-
-            switch (messageChannel.toUpperCase()) {
-                case "SMTP":
-                    if (null != address && !address.isEmpty()) {
-                        // mailerService.send(address, wrapper.eui, wrapper.message);
-                        mailerService.sendEmail(address, wrapper.eui, wrapper.message);
-                    }
-                    break;
-                case "WEBHOOK":
-                    wrapper.user = null;
-                    if (null != address && !address.isEmpty()) {
-                        new WebhookService().send(address, new Message(wrapper.eui, wrapper.message));
-                    }
-                    break;
-                case "DISCORD":
-                    if (null != address && !address.isEmpty()) {
-                        new DiscordService().send(address, new DiscordMessage(wrapper.eui, wrapper.message));
-                    }
-                    break;
-                case "PUSHOVER":
-                    if (null != address && !address.isEmpty()) {
-                        pushoverService.send(address, new Message(wrapper.eui, wrapper.message));
-                    }
-                    break;
-                case "SLACK":
-                    if (null != address && !address.isEmpty()) {
-                        slackService.send(address, new Message(wrapper.eui, wrapper.message));
-                    }
-                    break;
-                case "TELEGRAM":
-                    if (null != address && !address.isEmpty()) {
-                        telegramService.send(address, new Message(wrapper.eui, wrapper.message));
-                    }
-                    break;
+            if ("SMS".equalsIgnoreCase(messageChannel)) {
+                // TODO
                 /*
-                 * case "SMS":
                  * if (user.getCredits() > 0) {
                  * response = smsNotification.send(user.getUid(), user.getPhonePrefix() +
                  * address, nodeName, message);
-                 * }
                  * if (!response.startsWith("ERROR")) {
-                 * //TODO: decrease user credits
+                 * // TODO: decrease user credits
                  * }
-                 * break;
+                 * }else{
+                 * //TODO
+                 * }
                  */
-                default:
-                    LOG.warnf("Unsupported message type %1s", wrapper.type);
+            } else if (null != address && !address.isEmpty()) {
+                switch (messageChannel.toUpperCase()) {
+                    case "SMTP":
+                        mailerService.sendEmail(address, wrapper.eui, wrapper.message);
+                        break;
+                    case "WEBHOOK":
+                        wrapper.user = null;
+                        new WebhookService().send(address, new Message(wrapper.eui, wrapper.message));
+                        break;
+                    /*
+                     * case "DISCORD":
+                     * new DiscordService().send(address, new DiscordMessage(wrapper.eui,
+                     * wrapper.message));
+                     * break;
+                     * case "PUSHOVER":
+                     * pushoverService.send(address, new Message(wrapper.eui, wrapper.message));
+                     * break;
+                     * case "SLACK":
+                     * slackService.send(address, new Message(wrapper.eui, wrapper.message));
+                     * break;
+                     * case "TELEGRAM":
+                     * telegramService.send(address, new Message(wrapper.eui, wrapper.message));
+                     * break;
+                     */
+                    default:
+                        LOG.warnf("Unsupported message type %1s", wrapper.type);
+                }
             }
         }
+    }
+
+    public void processMailing(String docUid, String target){
+        Document docPl = getDocument(docUid, "pl");
+        Document docEn = getDocument(docUid, "en");
+        if(null==docPl && null==docEn){
+            LOG.error("document not found "+docUid);
+        }
+        User user;
+        Document docToSend;
+        String subject;
+        String content;
+        List<User> users = getUsers(target);
+        try {
+            for (int i = 0; i < users.size(); i++) {
+                user = users.get(i);
+                switch (user.preferredLanguage.toUpperCase()) {
+                    case "PL":
+                        docToSend = docPl;
+                        subject = URLDecoder.decode(docToSend.getTitle(), "UTF-8");
+                        content = URLDecoder.decode(docToSend.getContent(), "UTF-8");
+                        content = content.replaceFirst("\\$user.name", user.name);
+                        content = content.replaceFirst("\\$mailing.name", user.surname);
+                        content = content.replaceFirst("\\$user.uid", user.uid);
+                        mailerService.sendEmail(user.email, subject, content);
+                        break;
+                    // case "EN":
+                    default:
+                    docToSend = docEn;
+                    subject = URLDecoder.decode(docToSend.getTitle(), "UTF-8");
+                    content = URLDecoder.decode(docToSend.getContent(), "UTF-8");
+                    content = content.replaceFirst("\\$user.name", user.name);
+                    content = content.replaceFirst("\\$mailing.name", user.surname);
+                    content = content.replaceFirst("\\$user.uid", user.uid);
+                    mailerService.sendEmail(user.email, subject, content);
+                    break;
+                }
+            }
+        } catch (UnsupportedEncodingException ex) {
+            LOG.error(ex.getMessage());
+        }
+    }
+
+    private void processMailing(MessageWrapper wrapper) {
+        processMailing(wrapper.message, wrapper.user.role);
+    }
+
+    private Document getDocument(String uid, String language) {
+        ContentServiceClient client;
+        Document document = null;
+        try {
+            client = RestClientBuilder.newBuilder()
+                    .baseUri(new URI(authHost))
+                    .followRedirects(true)
+                    .build(ContentServiceClient.class);
+            document = client.getDocument(uid, appKey, language);
+        } catch (URISyntaxException ex) {
+            LOG.error(ex.getMessage());
+            // TODO: notyfikacja użytkownika o błędzie
+        } catch (ProcessingException ex) {
+            LOG.error(ex.getMessage());
+        } catch (WebApplicationException ex) {
+            LOG.error(ex.getMessage());
+        } catch (Exception ex) {
+            LOG.error(ex.getMessage());
+            // TODO: notyfikacja użytkownika o błędzie
+        }
+        return document;
     }
 
     private void processDirectEmail(MessageWrapper wrapper) {
         LOG.info("DIRECT_EMAIL");
         mailerService.sendEmail(wrapper.user.email, wrapper.subject, wrapper.message);
+
+    }
+
+    private List<User> getUsers(String role) {
+        UserServiceClient client;
+        List<User> users;
+        try {
+            client = RestClientBuilder.newBuilder()
+                    .baseUri(new URI(authHost))
+                    .followRedirects(true)
+                    .build(UserServiceClient.class);
+            users = client.getUsers(appKey, role);
+            return users;
+        } catch (URISyntaxException ex) {
+            LOG.error(ex.getMessage());
+            // TODO: notyfikacja użytkownika o błędzie
+        } catch (ProcessingException ex) {
+            LOG.error(ex.getMessage());
+        } catch (WebApplicationException ex) {
+            LOG.error(ex.getMessage());
+        } catch (Exception ex) {
+            LOG.error(ex.getMessage());
+            // TODO: notyfikacja użytkownika o błędzie
+        }
+        return new ArrayList<>();
     }
 
     private User getUser(User user) {
@@ -244,7 +338,7 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
     }
 
     @Override
-    public void setMailerService(MailerService service) {
+    public void setMailerService(SmtpAdapter service) {
         this.mailerService = service;
     }
 
@@ -261,7 +355,7 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
 
     @Override
     public void setDao(IotDatabaseIface dao) {
-        this.dao=dao;
+        this.dao = dao;
     }
 
 }

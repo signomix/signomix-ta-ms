@@ -11,26 +11,25 @@ import org.jboss.logging.Logger;
 
 import com.signomix.common.db.IotDatabaseDao;
 import com.signomix.common.db.IotDatabaseIface;
+import com.signomix.messaging.adapter.out.SmtpAdapter;
 import com.signomix.messaging.application.port.out.MessageProcessorPort;
-import com.signomix.messaging.email.MailerService;
-import com.signomix.messaging.pushover.PushoverService;
-import com.signomix.messaging.slack.SlackService;
-import com.signomix.messaging.telegram.TelegramService;
 
 import io.agroal.api.AgroalDataSource;
+import io.quarkus.agroal.DataSource;
 import io.quarkus.runtime.StartupEvent;
 
 @ApplicationScoped
-public class ProcessNotificationMessageUC {
-    private static final Logger LOG = Logger.getLogger(ProcessNotificationMessageUC.class);
+public class MailingUC {
+    private static final Logger LOG = Logger.getLogger(MailingUC.class);
 
     @Inject
-    AgroalDataSource ds;
+    @DataSource("iot")
+    AgroalDataSource dataSource;
 
     IotDatabaseIface dao;
     
     @Inject
-    MailerService mailerService;
+    SmtpAdapter mailerService;
 
     //@Inject
     //TelegramService telegramService;
@@ -53,7 +52,7 @@ public class ProcessNotificationMessageUC {
 
     void onStart(@Observes StartupEvent ev) {   
         dao = new IotDatabaseDao();
-        dao.setDatasource(ds);
+        dao.setDatasource(dataSource);
         // If there are several adapters to choose from, I can decide which one to use.
         try {
             LOG.info("messagingProcessorClassName:"+usecaseClassName);
@@ -69,6 +68,9 @@ public class ProcessNotificationMessageUC {
         }
     }
 
+    public void processMailing(String docUid, String target){
+        messageAdapter.processMailing(docUid, target);
+    }
     public void processMailing(byte[] bytes){
         messageAdapter.processMailing(bytes);
     }
