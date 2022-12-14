@@ -16,6 +16,7 @@ import com.signomix.messaging.application.port.out.MessageProcessorPort;
 import com.signomix.messaging.email.MailerService;
 
 import io.agroal.api.AgroalDataSource;
+import io.quarkus.agroal.DataSource;
 import io.quarkus.runtime.StartupEvent;
 
 @ApplicationScoped
@@ -23,6 +24,7 @@ public class ProcessNotificationMessageUC {
     private static final Logger LOG = Logger.getLogger(ProcessNotificationMessageUC.class);
 
     @Inject
+    @DataSource("iot")
     AgroalDataSource ds;
 
     IotDatabaseIface dao;

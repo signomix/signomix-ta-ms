@@ -11,6 +11,7 @@ import org.jboss.logging.Logger;
 
 import com.signomix.common.db.IotDatabaseDao;
 import com.signomix.common.db.IotDatabaseIface;
+import com.signomix.messaging.adapter.out.MessageProcessorAdapter;
 import com.signomix.messaging.application.port.out.MessageProcessorPort;
 import com.signomix.messaging.email.MailerService;
 
@@ -31,56 +32,64 @@ public class MailingUC {
     @Inject
     MailerService mailerService;
 
-    //@Inject
-    //TelegramService telegramService;
+    // @Inject
+    // TelegramService telegramService;
 
-    //@Inject
-    //SlackService slackService;
+    // @Inject
+    // SlackService slackService;
 
-    //@Inject
-    //PushoverService pushoverService;
+    // @Inject
+    // PushoverService pushoverService;
 
     @ConfigProperty(name = "signomix.app.key", defaultValue = "not_configured")
     String appKey;
     @ConfigProperty(name = "signomix.auth.host", defaultValue = "not_configured")
     String authHost;
 
-    @ConfigProperty(name = "messaging.processor.class")
+    // @ConfigProperty(name = "messaging.processor.class")
     String usecaseClassName;
 
-    private MessageProcessorPort messageAdapter=null;
+    private MessageProcessorPort messageAdapter = null;
 
-    void onStart(@Observes StartupEvent ev) {   
+    void onStart(@Observes StartupEvent ev) {
         dao = new IotDatabaseDao();
         dao.setDatasource(dataSource);
         // If there are several adapters to choose from, I can decide which one to use.
         try {
-            LOG.info("messagingProcessorClassName:"+usecaseClassName);
-            messageAdapter=(MessageProcessorPort)Class.forName(usecaseClassName).getDeclaredConstructor().newInstance();
+            LOG.info("messagingProcessorClassName:" + usecaseClassName);
+            messageAdapter = new MessageProcessorAdapter();
+            // messageAdapter=(MessageProcessorPort)Class.forName(usecaseClassName).getDeclaredConstructor().newInstance();
             messageAdapter.setMailerService(mailerService);
             messageAdapter.setApplicationKey(appKey);
             messageAdapter.setAuthHost(authHost);
             messageAdapter.setDao(dao);
-        } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException
-                | NoSuchMethodException | SecurityException | ClassNotFoundException|NullPointerException e) {
+            // } catch (InstantiationException | IllegalAccessException |
+            // IllegalArgumentException | InvocationTargetException
+            // | NoSuchMethodException | SecurityException |
+            // ClassNotFoundException|NullPointerException e) {
+        } catch (Exception e) {
             LOG.error(e.getMessage());
             return;
         }
     }
 
-    public void processMailing(String docUid, String target){
+    public void processMailing(String docUid, String target) {
         messageAdapter.processMailing(docUid, target);
     }
-    public void processMailing(byte[] bytes){
+
+    public void processMailing(byte[] bytes) {
         messageAdapter.processMailing(bytes);
     }
-    public void processEvent(byte[] bytes){
+
+    public void processEvent(byte[] bytes) {
         messageAdapter.processEvent(bytes);
     }
-    public void processAdminEmail(byte[] bytes){
+
+    public void processAdminEmail(byte[] bytes) {
         messageAdapter.processAdminEmail(bytes);
     }
-    public void processNotification(byte[] bytes){
+
+    public void processNotification(byte[] bytes) {
         messageAdapter.processNotification(bytes);
     }
 
