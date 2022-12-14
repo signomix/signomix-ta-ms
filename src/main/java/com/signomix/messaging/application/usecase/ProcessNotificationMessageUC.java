@@ -46,7 +46,7 @@ public class ProcessNotificationMessageUC {
     @ConfigProperty(name = "signomix.auth.host", defaultValue = "not_configured")
     String authHost;
 
-    // @ConfigProperty(name = "messaging.processor.class")
+    @ConfigProperty(name = "messaging.processor.class")
     String usecaseClassName;
 
     private MessageProcessorPort messagePort = null;
@@ -55,21 +55,26 @@ public class ProcessNotificationMessageUC {
         dao = new IotDatabaseDao();
         dao.setDatasource(ds);
         // If there are several adapters to choose from, I can decide which one to use.
-        try {
-            LOG.info("messagingProcessorClassName:" + usecaseClassName);
-            // messagePort=(MessageProcessorPort)Class.forName(usecaseClassName).getDeclaredConstructor().newInstance();
+        if (null == usecaseClassName || usecaseClassName.isEmpty()) {
             messagePort = new MessageProcessorAdapter();
+        } else {
+            try {
+                LOG.info("messagingProcessorClassName:" + usecaseClassName);
+                messagePort = (MessageProcessorPort) Class.forName(usecaseClassName).getDeclaredConstructor()
+                        .newInstance();
+            } catch (InstantiationException | IllegalAccessException | IllegalArgumentException
+                    | InvocationTargetException
+                    | NoSuchMethodException | SecurityException | ClassNotFoundException e) {
+                LOG.error(e.getMessage());
+                return;
+            } catch (Exception e) {
+                LOG.error(e.getMessage());
+                return;
+            }
             messagePort.setMailerService(mailerService);
             messagePort.setApplicationKey(appKey);
             messagePort.setAuthHost(authHost);
             messagePort.setDao(dao);
-            // } catch (InstantiationException | IllegalAccessException |
-            // IllegalArgumentException | InvocationTargetException
-            // | NoSuchMethodException | SecurityException |
-            // ClassNotFoundException|NullPointerException e) {
-        } catch (Exception e) {
-            LOG.error(e.getMessage());
-            return;
         }
     }
 
