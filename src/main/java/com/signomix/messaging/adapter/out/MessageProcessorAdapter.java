@@ -28,18 +28,12 @@ import com.signomix.messaging.dto.Message;
 import com.signomix.messaging.dto.MessageWrapper;
 import com.signomix.messaging.dto.User;
 import com.signomix.messaging.email.MailerService;
-import com.signomix.messaging.pushover.PushoverService;
-import com.signomix.messaging.slack.SlackService;
-import com.signomix.messaging.telegram.TelegramService;
 import com.signomix.messaging.webhook.WebhookService;
 
 public class MessageProcessorAdapter implements MessageProcessorPort {
     private static final Logger LOG = Logger.getLogger(MessageProcessorAdapter.class);
 
-    MailerService mailerService;
-    TelegramService telegramService;
-    SlackService slackService;
-    PushoverService pushoverService;
+    protected MailerService mailerService;
     IotDatabaseIface dao;
 
     String appKey;
@@ -312,22 +306,8 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
         return device;
     }
 
-    private void sendDeviceDefined(Device device, MessageWrapper wrapper) {
-        /*
-        if (null == device) {
-            LOG.error("device not found");
-            return;
-        } else if (null == device.getConfiguration()) {
-            LOG.error("device not configured");
-        }
-        GuardianConfig config = JsonHelper.deserializeGuardianConfig(device.getConfiguration());
-        String[] emails = config.email.split(",");
-        for (int i = 0; i < emails.length; i++) {
-            if (!emails[i].trim().isEmpty()) {
-                mailerService.sendEmail(emails[i].trim(), wrapper.eui, wrapper.message);
-            }
-        }
-        */
+    protected void sendDeviceDefined(Device device, MessageWrapper wrapper) {
+        // project/device implementation goes here
     }
 
     @Override
