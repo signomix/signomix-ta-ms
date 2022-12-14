@@ -27,6 +27,7 @@ import com.signomix.messaging.dto.EventWrapper;
 import com.signomix.messaging.dto.Message;
 import com.signomix.messaging.dto.MessageWrapper;
 import com.signomix.messaging.dto.User;
+import com.signomix.messaging.email.MailerService;
 import com.signomix.messaging.pushover.PushoverService;
 import com.signomix.messaging.slack.SlackService;
 import com.signomix.messaging.telegram.TelegramService;
@@ -35,7 +36,7 @@ import com.signomix.messaging.webhook.WebhookService;
 public class MessageProcessorAdapter implements MessageProcessorPort {
     private static final Logger LOG = Logger.getLogger(MessageProcessorAdapter.class);
 
-    SmtpAdapter mailerService;
+    MailerService mailerService;
     TelegramService telegramService;
     SlackService slackService;
     PushoverService pushoverService;
@@ -134,55 +135,43 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
                 }
                 address = address + channelConfig[channelConfig.length - 1];
             }
-            if ("SMS".equalsIgnoreCase(messageChannel)) {
-                // TODO
-                /*
-                 * if (user.getCredits() > 0) {
-                 * response = smsNotification.send(user.getUid(), user.getPhonePrefix() +
-                 * address, nodeName, message);
-                 * if (!response.startsWith("ERROR")) {
-                 * // TODO: decrease user credits
-                 * }
-                 * }else{
-                 * //TODO
-                 * }
-                 */
-            } else if (null != address && !address.isEmpty()) {
-                switch (messageChannel.toUpperCase()) {
-                    case "SMTP":
+
+            switch (messageChannel.toUpperCase()) {
+                case "SMTP":
+                    if (null != address && !address.isEmpty()) {
+                        // mailerService.send(address, wrapper.eui, wrapper.message);
                         mailerService.sendEmail(address, wrapper.eui, wrapper.message);
-                        break;
-                    case "WEBHOOK":
-                        wrapper.user = null;
+                    }
+                    break;
+                case "WEBHOOK":
+                    wrapper.user = null;
+                    if (null != address && !address.isEmpty()) {
                         new WebhookService().send(address, new Message(wrapper.eui, wrapper.message));
-                        break;
+                    }
+                    break;
+                case "SMS":
                     /*
-                     * case "DISCORD":
-                     * new DiscordService().send(address, new DiscordMessage(wrapper.eui,
-                     * wrapper.message));
-                     * break;
-                     * case "PUSHOVER":
-                     * pushoverService.send(address, new Message(wrapper.eui, wrapper.message));
-                     * break;
-                     * case "SLACK":
-                     * slackService.send(address, new Message(wrapper.eui, wrapper.message));
-                     * break;
-                     * case "TELEGRAM":
-                     * telegramService.send(address, new Message(wrapper.eui, wrapper.message));
-                     * break;
-                     */
-                    default:
-                        LOG.warnf("Unsupported message type %1s", wrapper.type);
-                }
+                    if (user.getCredits() > 0) {
+                        response = smsNotification.send(user.getUid(), user.getPhonePrefix() +
+                        address, nodeName, message);
+                    }
+                    if (!response.startsWith("ERROR")) {
+                        // TODO: decrease user credits
+                    }
+                    */
+                    break;
+
+                default:
+                    LOG.warnf("Unsupported message type %1s", wrapper.type);
             }
         }
     }
 
-    public void processMailing(String docUid, String target){
+    public void processMailing(String docUid, String target) {
         Document docPl = getDocument(docUid, "pl");
         Document docEn = getDocument(docUid, "en");
-        if(null==docPl && null==docEn){
-            LOG.error("document not found "+docUid);
+        if (null == docPl && null == docEn) {
+            LOG.error("document not found " + docUid);
         }
         User user;
         Document docToSend;
@@ -204,14 +193,14 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
                         break;
                     // case "EN":
                     default:
-                    docToSend = docEn;
-                    subject = URLDecoder.decode(docToSend.getTitle(), "UTF-8");
-                    content = URLDecoder.decode(docToSend.getContent(), "UTF-8");
-                    content = content.replaceFirst("\\$user.name", user.name);
-                    content = content.replaceFirst("\\$mailing.name", user.surname);
-                    content = content.replaceFirst("\\$user.uid", user.uid);
-                    mailerService.sendEmail(user.email, subject, content);
-                    break;
+                        docToSend = docEn;
+                        subject = URLDecoder.decode(docToSend.getTitle(), "UTF-8");
+                        content = URLDecoder.decode(docToSend.getContent(), "UTF-8");
+                        content = content.replaceFirst("\\$user.name", user.name);
+                        content = content.replaceFirst("\\$mailing.name", user.surname);
+                        content = content.replaceFirst("\\$user.uid", user.uid);
+                        mailerService.sendEmail(user.email, subject, content);
+                        break;
                 }
             }
         } catch (UnsupportedEncodingException ex) {
@@ -249,7 +238,6 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
     private void processDirectEmail(MessageWrapper wrapper) {
         LOG.info("DIRECT_EMAIL");
         mailerService.sendEmail(wrapper.user.email, wrapper.subject, wrapper.message);
-
     }
 
     private List<User> getUsers(String role) {
@@ -277,9 +265,6 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
     }
 
     private User getUser(User user) {
-        if (null != user.email && !user.email.isEmpty()) {
-            return user;
-        }
         String uid = user.uid;
         UserServiceClient client;
         User completedUser = null;
@@ -328,17 +313,25 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
     }
 
     private void sendDeviceDefined(Device device, MessageWrapper wrapper) {
-        if (null == device || null == device.getConfiguration()) {
+        /*
+        if (null == device) {
+            LOG.error("device not found");
             return;
+        } else if (null == device.getConfiguration()) {
+            LOG.error("device not configured");
         }
-        // TODO: get emails
-        // TODO: get phone numbers
-        String email = "";
-        mailerService.sendEmail(email, wrapper.eui, wrapper.message);
+        GuardianConfig config = JsonHelper.deserializeGuardianConfig(device.getConfiguration());
+        String[] emails = config.email.split(",");
+        for (int i = 0; i < emails.length; i++) {
+            if (!emails[i].trim().isEmpty()) {
+                mailerService.sendEmail(emails[i].trim(), wrapper.eui, wrapper.message);
+            }
+        }
+        */
     }
 
     @Override
-    public void setMailerService(SmtpAdapter service) {
+    public void setMailerService(MailerService service) {
         this.mailerService = service;
     }
 

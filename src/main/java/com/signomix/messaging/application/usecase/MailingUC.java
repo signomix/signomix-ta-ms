@@ -11,8 +11,8 @@ import org.jboss.logging.Logger;
 
 import com.signomix.common.db.IotDatabaseDao;
 import com.signomix.common.db.IotDatabaseIface;
-import com.signomix.messaging.adapter.out.SmtpAdapter;
 import com.signomix.messaging.application.port.out.MessageProcessorPort;
+import com.signomix.messaging.email.MailerService;
 
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.agroal.DataSource;
@@ -29,7 +29,7 @@ public class MailingUC {
     IotDatabaseIface dao;
     
     @Inject
-    SmtpAdapter mailerService;
+    MailerService mailerService;
 
     //@Inject
     //TelegramService telegramService;

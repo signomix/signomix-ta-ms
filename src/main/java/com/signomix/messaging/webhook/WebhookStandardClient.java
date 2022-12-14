@@ -27,6 +27,7 @@ public class WebhookStandardClient {
                     .build();
             HttpResponse<String> response = httpClient.send(request,
                     HttpResponse.BodyHandlers.ofString());
+                    //response.statusCode()
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
             LOG.error(e.getMessage());
