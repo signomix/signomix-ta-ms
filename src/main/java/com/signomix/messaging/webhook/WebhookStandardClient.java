@@ -13,7 +13,7 @@ import org.jboss.logging.Logger;
 public class WebhookStandardClient {
     private static final Logger LOG = Logger.getLogger(WebhookStandardClient.class);
 
-    public void sendMesaage(String url, Message message) {
+    public HttpResponse<String> sendMessage(String url, Message message) {
         String requestBody = buildRequestBody(message);
         HttpClient httpClient = HttpClient.newBuilder()
                 .version(HttpClient.Version.HTTP_1_1)
@@ -27,14 +27,15 @@ public class WebhookStandardClient {
                     .build();
             HttpResponse<String> response = httpClient.send(request,
                     HttpResponse.BodyHandlers.ofString());
-                    //response.statusCode()
+                    return response;
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
             LOG.error(e.getMessage());
+            return null;
         }
     }
 
-    public void sendMesaage(String url, String header, String token, Message message) {
+    public HttpResponse<String> sendMesaage(String url, String header, String token, Message message) {
         String requestBody = buildRequestBody(message);
         HttpClient httpClient = HttpClient.newBuilder()
                 .version(HttpClient.Version.HTTP_1_1)
@@ -49,9 +50,11 @@ public class WebhookStandardClient {
                     .build();
             HttpResponse<String> response = httpClient.send(request,
                     HttpResponse.BodyHandlers.ofString());
+                    return response;
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
             LOG.error(e.getMessage());
+            return null;
         }
     }
 

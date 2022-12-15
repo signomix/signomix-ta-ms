@@ -1,5 +1,7 @@
 package com.signomix.messaging.webhook;
 
+import java.net.http.HttpResponse;
+
 import javax.ws.rs.ProcessingException;
 import javax.ws.rs.WebApplicationException;
 
@@ -37,10 +39,11 @@ public class WebhookService {
         }
         try {
             LOG.info("sending " + message.content + " to " + webhookUrl);
+            HttpResponse<String> response;
             if (headerName.isEmpty()) {
-                client.sendMesaage(webhookUrl, message);
+                response = client.sendMessage(webhookUrl, message);
             } else {
-                client.sendMesaage(webhookUrl, headerName, headerValue, message);
+                response = client.sendMesaage(webhookUrl, headerName, headerValue, message);
             }
         } catch (ProcessingException ex) {
             ex.printStackTrace();

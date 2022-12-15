@@ -28,6 +28,7 @@ import com.signomix.messaging.dto.Message;
 import com.signomix.messaging.dto.MessageWrapper;
 import com.signomix.messaging.dto.User;
 import com.signomix.messaging.email.MailerService;
+import com.signomix.messaging.sms.SmsplanetService;
 import com.signomix.messaging.webhook.WebhookService;
 
 public class MessageProcessorAdapter implements MessageProcessorPort {
@@ -112,7 +113,9 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
         String messageChannel = null;
         User user = getUser(wrapper.user);
         Device device = getDevice(wrapper.eui);
-        sendDeviceDefined(device, wrapper);
+        if(sendDeviceDefined(device, wrapper)){
+            return;
+        }
         String[] channelConfig = user.getChannelConfig(wrapper.type);
         if (channelConfig == null || channelConfig.length < 2) {
             LOG.info("Channel not configured " + wrapper.type + " " + channelConfig.length);
@@ -130,33 +133,26 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
                 address = address + channelConfig[channelConfig.length - 1];
             }
 
-            switch (messageChannel.toUpperCase()) {
-                case "SMTP":
-                    if (null != address && !address.isEmpty()) {
-                        // mailerService.send(address, wrapper.eui, wrapper.message);
+            if (null != address && !address.isEmpty()) {
+                switch (messageChannel.toUpperCase()) {
+                    case "SMTP":
                         mailerService.sendEmail(address, wrapper.eui, wrapper.message);
-                    }
-                    break;
-                case "WEBHOOK":
-                    wrapper.user = null;
-                    if (null != address && !address.isEmpty()) {
+                        break;
+                    case "WEBHOOK":
                         new WebhookService().send(address, new Message(wrapper.eui, wrapper.message));
-                    }
-                    break;
-                case "SMS":
-                    /*
-                    if (user.getCredits() > 0) {
-                        response = smsNotification.send(user.getUid(), user.getPhonePrefix() +
-                        address, nodeName, message);
-                    }
-                    if (!response.startsWith("ERROR")) {
-                        // TODO: decrease user credits
-                    }
-                    */
-                    break;
+                        break;
+                    case "SMS":
+                        if (user.credits > 0) {
+                            SmsplanetService smsService=new SmsplanetService();
+                            smsService.send(user, address, new Message(wrapper.eui, wrapper.message));
+                        }else{
+                            //TODO: error
+                        }
+                        break;
 
-                default:
-                    LOG.warnf("Unsupported message type %1s", wrapper.type);
+                    default:
+                        LOG.warnf("Unsupported message type %1s", wrapper.type);
+                }
             }
         }
     }
@@ -306,8 +302,9 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
         return device;
     }
 
-    protected void sendDeviceDefined(Device device, MessageWrapper wrapper) {
+    protected boolean sendDeviceDefined(Device device, MessageWrapper wrapper) {
         // project/device implementation goes here
+        return false;
     }
 
     @Override
