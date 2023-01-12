@@ -1,4 +1,4 @@
-package com.signomix.messaging.dto;
+package com.signomix.messaging.domain;
 
 import javax.enterprise.context.Dependent;
 

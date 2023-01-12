@@ -3,6 +3,7 @@ package com.signomix.messaging.adapter.in;
 import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
+import javax.transaction.Transactional;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
@@ -13,10 +14,11 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 
-import com.signomix.annotation.InboundAdapter;
-import com.signomix.messaging.adapter.out.SmtpAdapter;
+import com.signomix.common.MessageEnvelope;
+import com.signomix.common.annotation.InboundAdapter;
+import com.signomix.messaging.adapter.out.MailingActionRepository;
+//import com.signomix.messaging.adapter.out.SmtpAdapter;
 import com.signomix.messaging.application.port.in.MailingPort;
-import com.signomix.messaging.dto.MessageWrapper;
 
 import io.quarkus.logging.Log;
 
@@ -26,20 +28,24 @@ import io.quarkus.logging.Log;
 public class MessagingRestApi {
 
     @Inject
-    SmtpAdapter mailerService;
+    MailingActionRepository repository;
+
+    // @Inject
+    // SmtpAdapter mailerService;
 
     @Inject
     MailingPort mailingPort;
 
     @PostConstruct
     void init() {
-        Log.infof("Starting");
+        Log.info("Starting");
     }
 
     @GET
     @Path("/health")
     @Produces(MediaType.TEXT_PLAIN)
     public String getHealth() {
+        repository.listAll().forEach(action->{System.out.println(action.getStatus());});
         return "OK";
     }
 
@@ -47,11 +53,12 @@ public class MessagingRestApi {
     @Path("/webhook")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
-    public String sendToWebhook(@HeaderParam("Authorization") String token, MessageWrapper message) {
+    public String sendToWebhook(@HeaderParam("Authorization") String token, MessageEnvelope message) {
         Log.info(message.eui + " " + message.message);
         return "OK";
     }
 
+    @Transactional
     @POST
     @Path("/send")
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
@@ -62,7 +69,8 @@ public class MessagingRestApi {
 
         String documentUid = form.getFirst("doc");
         String target = form.getFirst("target");
-        mailingPort.sendDocument(documentUid, target, token);
+        //mailingPort.sendDocument(documentUid, target, token);
+        mailingPort.addPlannedMailing(documentUid, target, token);
         return Response.ok().build();
     }
 

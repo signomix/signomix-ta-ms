@@ -18,10 +18,10 @@ public class MqClient {
     @Inject
     MailingUC processMessageUseCase;
 
-    @Incoming("mailing")
+    /* @Incoming("mailing")
     public void processMailing(byte[] bytes) {
         processMessageUseCase.processMailing(bytes);
-    }
+    } */
 
     @Incoming("events")
     public void processEvent(byte[] bytes) {
@@ -36,6 +36,15 @@ public class MqClient {
     @Incoming("notifications")
     public void processNotification(byte[] bytes) {
         processMessageUseCase.processNotification(bytes);
+    }
+
+    @Incoming("events_db")
+    public void processDbEvent(byte[] bytes) {
+        
+    }
+    @Incoming("events_device")
+    public void processDeviceEvent(byte[] bytes) {
+        
     }
 
 }

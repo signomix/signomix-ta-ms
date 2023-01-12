@@ -11,9 +11,9 @@ import org.jboss.logging.Logger;
 
 import com.signomix.common.db.IotDatabaseDao;
 import com.signomix.common.db.IotDatabaseIface;
+import com.signomix.messaging.adapter.out.MailerService;
 import com.signomix.messaging.adapter.out.MessageProcessorAdapter;
 import com.signomix.messaging.application.port.out.MessageProcessorPort;
-import com.signomix.messaging.email.MailerService;
 
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.agroal.DataSource;
@@ -78,9 +78,9 @@ public class ProcessNotificationMessageUC {
         }
     }
 
-    public void processMailing(byte[] bytes) {
+    /* public void processMailing(byte[] bytes) {
         messagePort.processMailing(bytes);
-    }
+    } */
 
     public void processEvent(byte[] bytes) {
         messagePort.processEvent(bytes);

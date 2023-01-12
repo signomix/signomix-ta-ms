@@ -7,7 +7,7 @@ import javax.ws.rs.WebApplicationException;
 
 import org.jboss.logging.Logger;
 
-import com.signomix.messaging.dto.Message;
+import com.signomix.messaging.domain.Message;
 
 public class WebhookService {
     private static final Logger LOG = Logger.getLogger(WebhookService.class);
@@ -38,7 +38,7 @@ public class WebhookService {
             webhookUrl = uri;
         }
         try {
-            LOG.info("sending " + message.content + " to " + webhookUrl);
+            LOG.debug("sending " + message.content + " to " + webhookUrl);
             HttpResponse<String> response;
             if (headerName.isEmpty()) {
                 response = client.sendMessage(webhookUrl, message);

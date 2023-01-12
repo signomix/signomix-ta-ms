@@ -13,7 +13,7 @@ import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
 @RegisterRestClient
 @Path("/api/cs")
-public interface ContentServiceClient {
+public interface ContentServiceClient  extends AutoCloseable{
 
     @GET
     @Produces("application/json")

@@ -12,17 +12,22 @@ import javax.ws.rs.WebApplicationException;
 
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 
-import com.signomix.messaging.dto.User;
+import com.signomix.common.User;
 
 @RegisterRestClient
 @Path("/api/user")
-public interface UserServiceClient {
+public interface UserServiceClient extends AutoCloseable{
 
     @GET
     @Produces("application/json")
     @Path("/{uid}")
     User getUser(@PathParam("uid") String uid, @QueryParam("appkey") String appKey) throws ProcessingException, WebApplicationException;
 
+
+    @GET
+    @Produces("application/json")
+    User getUserByNumber(@QueryParam("n") long number, @QueryParam("appkey") String appKey) throws ProcessingException, WebApplicationException;
+    
     @GET
     @Produces("application/json")
     List<User> getUsers(@QueryParam("appkey") String appKey, @QueryParam("role") String role) throws ProcessingException, WebApplicationException;

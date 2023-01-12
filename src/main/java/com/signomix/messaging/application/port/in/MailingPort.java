@@ -5,13 +5,16 @@ import javax.inject.Inject;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import com.signomix.common.User;
 import com.signomix.messaging.application.exception.ServiceException;
 import com.signomix.messaging.application.usecase.AuthUC;
 import com.signomix.messaging.application.usecase.MailingUC;
-import com.signomix.messaging.dto.User;
+import com.signomix.messaging.domain.MailingAction;
+
 
 @ApplicationScoped
 public class MailingPort {
+    
     @Inject 
     AuthUC athUC;
     
@@ -27,5 +30,17 @@ public class MailingPort {
             throw new ServiceException(unauthorized);
         }
         mailingUseCase.processMailing(docUid, target);
+    }
+
+    public void addPlannedMailing(String docUid, String target, String sessionToken) throws ServiceException {
+        User actor = athUC.getUser(sessionToken);
+        if(null==actor || !actor.role.contains("admin")){
+            throw new ServiceException(unauthorized);
+        }
+        mailingUseCase.addPlannedMailing(docUid, target);
+    }
+
+    public void runMailingAction(MailingAction action){
+        mailingUseCase.runMailingAction(action.getId());
     }
 }

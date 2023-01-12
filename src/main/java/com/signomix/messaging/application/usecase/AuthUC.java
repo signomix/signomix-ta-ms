@@ -16,7 +16,7 @@ import org.jboss.logging.Logger;
 import com.signomix.common.db.AuthDao;
 import com.signomix.common.db.AuthDaoIface;
 import com.signomix.messaging.application.port.out.UserServiceClient;
-import com.signomix.messaging.dto.User;
+import com.signomix.common.User;
 
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.agroal.DataSource;
@@ -44,7 +44,7 @@ public class AuthUC {
     }
 
     public User getUser(String sessionToken) {
-        LOG.info("token "+ sessionToken);
+        LOG.debug("token "+ sessionToken);
         String uid=dao.getUser(sessionToken);
         if(null==uid || uid.isEmpty()){
             LOG.error("token not found");

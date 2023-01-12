@@ -7,8 +7,9 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 
-import com.signomix.messaging.dto.Message;
 import org.jboss.logging.Logger;
+
+import com.signomix.messaging.domain.Message;
 
 public class WebhookStandardClient {
     private static final Logger LOG = Logger.getLogger(WebhookStandardClient.class);

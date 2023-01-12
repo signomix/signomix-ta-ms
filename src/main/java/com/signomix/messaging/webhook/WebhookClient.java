@@ -6,10 +6,10 @@ import javax.ws.rs.ProcessingException;
 import javax.ws.rs.Produces;
 import javax.ws.rs.WebApplicationException;
 
-import com.signomix.messaging.dto.Message;
-
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 import org.jboss.resteasy.annotations.jaxrs.HeaderParam;
+
+import com.signomix.messaging.domain.Message;
 
 @RegisterRestClient
 @Path("/")

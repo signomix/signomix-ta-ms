@@ -1,23 +1,30 @@
 package com.signomix.messaging.application.usecase;
 
-import java.lang.reflect.InvocationTargetException;
+import java.util.Date;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
+import javax.transaction.Transactional;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import com.signomix.common.db.IotDatabaseDao;
 import com.signomix.common.db.IotDatabaseIface;
+import com.signomix.messaging.adapter.out.MailerService;
+import com.signomix.messaging.adapter.out.MailingActionRepository;
 import com.signomix.messaging.adapter.out.MessageProcessorAdapter;
 import com.signomix.messaging.application.port.out.MessageProcessorPort;
-import com.signomix.messaging.email.MailerService;
+import com.signomix.messaging.domain.MailingAction;
+import com.signomix.messaging.domain.Status;
 
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.agroal.DataSource;
 import io.quarkus.runtime.StartupEvent;
+import io.quarkus.vertx.ConsumeEvent;
+import io.smallrye.common.annotation.NonBlocking;
+
 
 @ApplicationScoped
 public class MailingUC {
@@ -32,14 +39,8 @@ public class MailingUC {
     @Inject
     MailerService mailerService;
 
-    // @Inject
-    // TelegramService telegramService;
-
-    // @Inject
-    // SlackService slackService;
-
-    // @Inject
-    // PushoverService pushoverService;
+    @Inject
+    MailingActionRepository mailingRepository;
 
     @ConfigProperty(name = "signomix.app.key", defaultValue = "not_configured")
     String appKey;
@@ -63,6 +64,7 @@ public class MailingUC {
             messageAdapter.setApplicationKey(appKey);
             messageAdapter.setAuthHost(authHost);
             messageAdapter.setDao(dao);
+            messageAdapter.setMailingRepository(mailingRepository);
             // } catch (InstantiationException | IllegalAccessException |
             // IllegalArgumentException | InvocationTargetException
             // | NoSuchMethodException | SecurityException |
@@ -73,13 +75,38 @@ public class MailingUC {
         }
     }
 
+    @ConsumeEvent("mailing")
+    @NonBlocking
+    public void processMailingEvent(String message) {
+        String[] params= message.split("\t");
+        //messageAdapter.processMailing(params[1], params[0]);
+        System.out.println("hello");
+    }
+
+    @Transactional
     public void processMailing(String docUid, String target) {
         messageAdapter.processMailing(docUid, target);
     }
 
-    public void processMailing(byte[] bytes) {
-        messageAdapter.processMailing(bytes);
+    public void addPlannedMailing(String docUid, String target) {
+        MailingAction mailingAction=new MailingAction();
+        mailingAction.setDocUid(docUid);
+        mailingAction.setTarget(target);
+        mailingAction.setCreatedAt(new Date());
+        mailingAction.setPlannedAt(new Date());
+        mailingAction.setStatus(Status.Planned);
+        mailingRepository.persist(mailingAction);
     }
+
+    @Transactional
+    public void runMailingAction(long actionId){
+        MailingAction mailingAction=mailingRepository.findById(actionId);
+        messageAdapter.processMailing(mailingAction);
+    }
+
+    /* public void processMailing(byte[] bytes) {
+        messageAdapter.processMailing(bytes);
+    } */
 
     public void processEvent(byte[] bytes) {
         messageAdapter.processEvent(bytes);

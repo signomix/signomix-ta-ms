@@ -14,7 +14,7 @@ import com.signomix.common.iot.Device;
 
 @RegisterRestClient
 @Path("/api/iot/device")
-public interface DeviceServiceClient {
+public interface DeviceServiceClient  extends AutoCloseable{
 
     @GET
     @Produces("application/json")

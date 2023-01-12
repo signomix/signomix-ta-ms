@@ -1,11 +1,11 @@
-package com.signomix.messaging.email;
+package com.signomix.messaging.adapter.out;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
 import org.jboss.logging.Logger;
 
-import com.signomix.annotation.OutboundAdapter;
+import com.signomix.common.annotation.OutboundAdapter;
 import com.signomix.messaging.NotificationIface;
 
 import io.quarkus.mailer.Mail;
@@ -25,15 +25,26 @@ public class MailerService implements NotificationIface {
 
     @Override
     public String sendEmail(String toAddress, String subject, String body) {
-        //TODO: use EventBus
-        LOG.info("sendEmail1: " + toAddress + " " + subject);
+        LOG.debug("sendEmail1: " + toAddress + " " + subject);
         new Thread(() -> sendInThread(toAddress, subject, body)).start();
         return "OK";
     }
 
+    @Override
+    public String sendHtmlEmail(String toAddress, String subject, String body) {
+        try {
+            LOG.debug("sendEmail3: " + toAddress + " " + subject);
+            mailer.send(Mail.withHtml(toAddress, subject, body));
+        } catch (Exception ex) {
+            LOG.error("["+toAddress+"] "+ex.getMessage());
+        }
+        return "OK";
+    }
+
+
     private void sendInThread(String toAddress, String subject, String body){
         try {
-            LOG.info("sendEmail2: " + toAddress + " " + subject);
+            LOG.debug("sendEmail2: " + toAddress + " " + subject);
             mailer.send(Mail.withHtml(toAddress, subject, body));
         } catch (Exception ex) {
             LOG.error("["+toAddress+"] "+ex.getMessage());
