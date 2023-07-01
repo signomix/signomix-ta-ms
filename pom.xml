@@ -110,7 +110,7 @@
         <dependency>
             <groupId>com.signomix</groupId>
             <artifactId>signomix-common</artifactId>
-            <version>1.6.35</version>
+            <version>1.6.36</version>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
