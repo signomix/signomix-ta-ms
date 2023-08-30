@@ -10,7 +10,7 @@ import java.util.Date;
 import java.util.List;
 
 import javax.enterprise.context.ApplicationScoped;
-import javax.transaction.Transactional;
+import javax.inject.Inject;
 import javax.ws.rs.ProcessingException;
 import javax.ws.rs.WebApplicationException;
 
@@ -24,12 +24,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.signomix.common.EventEnvelope;
 import com.signomix.common.MessageEnvelope;
 import com.signomix.common.User;
+import com.signomix.common.application.port.out.UserServiceClient;
 import com.signomix.common.db.IotDatabaseIface;
 import com.signomix.common.iot.Device;
 import com.signomix.messaging.application.port.out.ContentServiceClient;
 import com.signomix.messaging.application.port.out.DeviceServiceClient;
 import com.signomix.messaging.application.port.out.MessageProcessorPort;
-import com.signomix.messaging.application.port.out.UserServiceClient;
+import com.signomix.messaging.application.usecase.AuthUC;
+import com.signomix.messaging.application.usecase.DeviceUC;
 import com.signomix.messaging.domain.MailingAction;
 import com.signomix.messaging.domain.Message;
 import com.signomix.messaging.domain.Status;
@@ -44,6 +46,12 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
 
     String appKey;
     String authHost;
+
+    @Inject
+    AuthUC authUC;
+
+    @Inject
+    DeviceUC deviceUC;
 
     MailingActionRepository mailingRepository;
 
@@ -228,7 +236,7 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
         action.setStartedAt(new Date());
         String subject;
         String content;
-        List<User> users = getUsers(target);
+        List<User> users = authUC.getUsers(target);
         for (int i = 0; i < users.size(); i++) {
             user = users.get(i);
             // skip if no e-mail is provided
@@ -314,10 +322,11 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
     private void processWelcomeEmail(MessageEnvelope wrapper) {
         LOG.debug("WELCOME_EMAIL");
         long userNumber = wrapper.user.number;
-        UserServiceClient client;
+        //UserServiceClient client;
         User user = null;
+
         // get user by number
-        try {
+        /* try {
             client = RestClientBuilder.newBuilder()
                     .baseUri(new URI(authHost))
                     .followRedirects(true)
@@ -333,7 +342,8 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
         } catch (Exception ex) {
             LOG.error(ex.getMessage());
             // TODO: notyfikacja użytkownika o błędzie
-        }
+        } */
+        user=authUC.getUser(userNumber);
         if (null == user) {
             LOG.error("user " + userNumber + " not found");
             return;
@@ -380,8 +390,8 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
         mailerService.sendEmail(user.email, subject, content);
     }
 
-    private List<User> getUsers(String role) {
-        UserServiceClient client;
+    /* private List<User> getUsers(String role) {
+        //UserServiceClient client;
         List<User> users;
         try {
             client = RestClientBuilder.newBuilder()
@@ -402,13 +412,13 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
             // TODO: notyfikacja użytkownika o błędzie
         }
         return new ArrayList<>();
-    }
+    } */
 
     private User getUser(User user) {
         String uid = user.uid;
-        UserServiceClient client;
+        //UserServiceClient client;
         User completedUser = null;
-        try {
+        /* try {
             client = RestClientBuilder.newBuilder()
                     .baseUri(new URI(authHost))
                     .followRedirects(true)
@@ -424,13 +434,18 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
         } catch (Exception ex) {
             LOG.error(ex.getMessage());
             // TODO: notyfikacja użytkownika o błędzie
-        }
+        } */
+        completedUser=authUC.getUser(uid);
         System.out.println(completedUser.toString());
         return completedUser;
     }
 
-    private Device getDevice(String eui) {
-        DeviceServiceClient client;
+    private Device getDevice(String eui){
+        return deviceUC.getDevice(eui);
+    }
+
+/*     private Device getDevice(String eui) {
+        //DeviceServiceClient client;
         Device device = null;
         try {
             client = RestClientBuilder.newBuilder()
@@ -450,7 +465,7 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
             // TODO: notyfikacja użytkownika o błędzie
         }
         return device;
-    }
+    } */
 
     protected boolean sendDeviceDefined(Device device, MessageEnvelope wrapper) {
         // project/device implementation goes here
