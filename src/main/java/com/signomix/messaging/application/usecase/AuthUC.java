@@ -10,6 +10,7 @@ import javax.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
+import com.signomix.common.Token;
 import com.signomix.common.User;
 import com.signomix.common.db.AuthDao;
 import com.signomix.common.db.AuthDaoIface;
@@ -25,6 +26,10 @@ import io.quarkus.runtime.StartupEvent;
 @ApplicationScoped
 public class AuthUC {
     private static final Logger LOG = Logger.getLogger(AuthUC.class);
+
+    //TODO: move to config
+    private long sessionTokenLifetime = 30; // minutes
+    private long permanentTokenLifetime = 10 * 365 * 24 * 60; // 10 years in minutes
     
     @ConfigProperty(name = "signomix.app.key", defaultValue = "not_configured")
     String appKey;
@@ -52,7 +57,8 @@ public class AuthUC {
 
     public User getUser(String sessionToken) {
         LOG.debug("token "+ sessionToken);
-        String uid=dao.getUser(sessionToken);
+        Token token=dao.getToken(sessionToken, sessionTokenLifetime,permanentTokenLifetime);
+        String uid=token.getUid();
         if(null==uid || uid.isEmpty()){
             LOG.error("token not found");
             return null;
