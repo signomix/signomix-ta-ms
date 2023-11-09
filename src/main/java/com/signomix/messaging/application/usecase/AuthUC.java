@@ -55,9 +55,22 @@ public class AuthUC {
         userDao.setDatasource(userDataSource);
     }
 
-    public User getUser(String sessionToken) {
+    public User getUser(String uid){
+        try{
+            return userDao.getUser(uid);
+        }catch(IotDatabaseException ex){
+            LOG.error(ex.getMessage());
+            return null;
+        }
+    }
+
+    public User getUserForToken(String sessionToken) {
         LOG.debug("token "+ sessionToken);
         Token token=dao.getToken(sessionToken, sessionTokenLifetime,permanentTokenLifetime);
+        if(null==token){
+            LOG.error("token not found");
+            return null;
+        }
         String uid=token.getUid();
         if(null==uid || uid.isEmpty()){
             LOG.error("token not found");

@@ -49,13 +49,13 @@ public class ProcessNotificationMessageUC {
     @ConfigProperty(name = "messaging.processor.class")
     String usecaseClassName;
 
-    private MessageProcessorPort messagePort = null;
+    @Inject MessageProcessorPort messagePort;
 
     void onStart(@Observes StartupEvent ev) {
         dao = new IotDatabaseDao();
         dao.setDatasource(ds);
         // If there are several adapters to choose from, I can decide which one to use.
-        if (null == usecaseClassName || usecaseClassName.isEmpty()) {
+        /* if (null == usecaseClassName || usecaseClassName.isEmpty()) {
             messagePort = new MessageProcessorAdapter();
         } else {
             try {
@@ -75,7 +75,7 @@ public class ProcessNotificationMessageUC {
             messagePort.setApplicationKey(appKey);
             messagePort.setAuthHost(authHost);
             messagePort.setDao(dao);
-        }
+        } */
     }
 
     /* public void processMailing(byte[] bytes) {

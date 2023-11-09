@@ -48,17 +48,17 @@ public class MailingUC {
     String authHost;
 
     // @ConfigProperty(name = "messaging.processor.class")
-    String usecaseClassName;
+    //String usecaseClassName;
 
-    private MessageProcessorPort messageAdapter = null;
+    @Inject MessageProcessorPort messageAdapter = null;
 
     void onStart(@Observes StartupEvent ev) {
         dao = new IotDatabaseDao();
         dao.setDatasource(dataSource);
         // If there are several adapters to choose from, I can decide which one to use.
         try {
-            LOG.info("messagingProcessorClassName:" + usecaseClassName);
-            messageAdapter = new MessageProcessorAdapter();
+            //LOG.info("messagingProcessorClassName:" + usecaseClassName);
+            //messageAdapter = new MessageProcessorAdapter();
             // messageAdapter=(MessageProcessorPort)Class.forName(usecaseClassName).getDeclaredConstructor().newInstance();
             messageAdapter.setMailerService(mailerService);
             messageAdapter.setApplicationKey(appKey);

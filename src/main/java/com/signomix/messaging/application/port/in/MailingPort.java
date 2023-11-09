@@ -25,7 +25,7 @@ public class MailingPort {
     String unauthorized;
 
     public void sendDocument(String docUid, String target, String sessionToken) throws ServiceException {
-        User actor = athUC.getUser(sessionToken);
+        User actor = athUC.getUserForToken(sessionToken);
         if(null==actor || !actor.role.contains("admin")){
             throw new ServiceException(unauthorized);
         }
@@ -33,7 +33,7 @@ public class MailingPort {
     }
 
     public void addPlannedMailing(String docUid, String target, String sessionToken) throws ServiceException {
-        User actor = athUC.getUser(sessionToken);
+        User actor = athUC.getUserForToken(sessionToken);
         if(null==actor || !actor.role.contains("admin")){
             throw new ServiceException(unauthorized);
         }

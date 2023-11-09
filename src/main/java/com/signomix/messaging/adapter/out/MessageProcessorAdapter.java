@@ -5,7 +5,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -24,11 +23,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.signomix.common.EventEnvelope;
 import com.signomix.common.MessageEnvelope;
 import com.signomix.common.User;
-import com.signomix.common.application.port.out.UserServiceClient;
 import com.signomix.common.db.IotDatabaseIface;
 import com.signomix.common.iot.Device;
 import com.signomix.messaging.application.port.out.ContentServiceClient;
-import com.signomix.messaging.application.port.out.DeviceServiceClient;
 import com.signomix.messaging.application.port.out.MessageProcessorPort;
 import com.signomix.messaging.application.usecase.AuthUC;
 import com.signomix.messaging.application.usecase.DeviceUC;
@@ -322,28 +319,30 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
     private void processWelcomeEmail(MessageEnvelope wrapper) {
         LOG.debug("WELCOME_EMAIL");
         long userNumber = wrapper.user.number;
-        //UserServiceClient client;
+        // UserServiceClient client;
         User user = null;
 
         // get user by number
-        /* try {
-            client = RestClientBuilder.newBuilder()
-                    .baseUri(new URI(authHost))
-                    .followRedirects(true)
-                    .build(UserServiceClient.class);
-            user = client.getUserByNumber(userNumber, appKey);
-        } catch (URISyntaxException ex) {
-            LOG.error(ex.getMessage());
-            // TODO: notyfikacja użytkownika o błędzie
-        } catch (ProcessingException ex) {
-            LOG.error(ex.getMessage());
-        } catch (WebApplicationException ex) {
-            LOG.error(ex.getMessage());
-        } catch (Exception ex) {
-            LOG.error(ex.getMessage());
-            // TODO: notyfikacja użytkownika o błędzie
-        } */
-        user=authUC.getUser(userNumber);
+        /*
+         * try {
+         * client = RestClientBuilder.newBuilder()
+         * .baseUri(new URI(authHost))
+         * .followRedirects(true)
+         * .build(UserServiceClient.class);
+         * user = client.getUserByNumber(userNumber, appKey);
+         * } catch (URISyntaxException ex) {
+         * LOG.error(ex.getMessage());
+         * // TODO: notyfikacja użytkownika o błędzie
+         * } catch (ProcessingException ex) {
+         * LOG.error(ex.getMessage());
+         * } catch (WebApplicationException ex) {
+         * LOG.error(ex.getMessage());
+         * } catch (Exception ex) {
+         * LOG.error(ex.getMessage());
+         * // TODO: notyfikacja użytkownika o błędzie
+         * }
+         */
+        user = authUC.getUser(userNumber);
         if (null == user) {
             LOG.error("user " + userNumber + " not found");
             return;
@@ -390,82 +389,90 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
         mailerService.sendEmail(user.email, subject, content);
     }
 
-    /* private List<User> getUsers(String role) {
-        //UserServiceClient client;
-        List<User> users;
-        try {
-            client = RestClientBuilder.newBuilder()
-                    .baseUri(new URI(authHost))
-                    .followRedirects(true)
-                    .build(UserServiceClient.class);
-            users = client.getUsers(appKey, role);
-            return users;
-        } catch (URISyntaxException ex) {
-            LOG.error(ex.getMessage());
-            // TODO: notyfikacja użytkownika o błędzie
-        } catch (ProcessingException ex) {
-            LOG.error(ex.getMessage());
-        } catch (WebApplicationException ex) {
-            LOG.error(ex.getMessage());
-        } catch (Exception ex) {
-            LOG.error(ex.getMessage());
-            // TODO: notyfikacja użytkownika o błędzie
-        }
-        return new ArrayList<>();
-    } */
+    /*
+     * private List<User> getUsers(String role) {
+     * //UserServiceClient client;
+     * List<User> users;
+     * try {
+     * client = RestClientBuilder.newBuilder()
+     * .baseUri(new URI(authHost))
+     * .followRedirects(true)
+     * .build(UserServiceClient.class);
+     * users = client.getUsers(appKey, role);
+     * return users;
+     * } catch (URISyntaxException ex) {
+     * LOG.error(ex.getMessage());
+     * // TODO: notyfikacja użytkownika o błędzie
+     * } catch (ProcessingException ex) {
+     * LOG.error(ex.getMessage());
+     * } catch (WebApplicationException ex) {
+     * LOG.error(ex.getMessage());
+     * } catch (Exception ex) {
+     * LOG.error(ex.getMessage());
+     * // TODO: notyfikacja użytkownika o błędzie
+     * }
+     * return new ArrayList<>();
+     * }
+     */
 
     private User getUser(User user) {
         String uid = user.uid;
-        //UserServiceClient client;
+        // UserServiceClient client;
         User completedUser = null;
-        /* try {
-            client = RestClientBuilder.newBuilder()
-                    .baseUri(new URI(authHost))
-                    .followRedirects(true)
-                    .build(UserServiceClient.class);
-            completedUser = client.getUser(uid, appKey);
-        } catch (URISyntaxException ex) {
-            LOG.error(ex.getMessage());
-            // TODO: notyfikacja użytkownika o błędzie
-        } catch (ProcessingException ex) {
-            LOG.error(ex.getMessage());
-        } catch (WebApplicationException ex) {
-            LOG.error(ex.getMessage());
-        } catch (Exception ex) {
-            LOG.error(ex.getMessage());
-            // TODO: notyfikacja użytkownika o błędzie
-        } */
-        completedUser=authUC.getUser(uid);
+        /*
+         * try {
+         * client = RestClientBuilder.newBuilder()
+         * .baseUri(new URI(authHost))
+         * .followRedirects(true)
+         * .build(UserServiceClient.class);
+         * completedUser = client.getUser(uid, appKey);
+         * } catch (URISyntaxException ex) {
+         * LOG.error(ex.getMessage());
+         * // TODO: notyfikacja użytkownika o błędzie
+         * } catch (ProcessingException ex) {
+         * LOG.error(ex.getMessage());
+         * } catch (WebApplicationException ex) {
+         * LOG.error(ex.getMessage());
+         * } catch (Exception ex) {
+         * LOG.error(ex.getMessage());
+         * // TODO: notyfikacja użytkownika o błędzie
+         * }
+         */
+        LOG.info("getUser " + uid);
+        LOG.info("authUC " + authUC);
+        completedUser = authUC.getUser(uid);
         System.out.println(completedUser.toString());
         return completedUser;
     }
 
-    private Device getDevice(String eui){
+    private Device getDevice(String eui) {
         return deviceUC.getDevice(eui);
     }
 
-/*     private Device getDevice(String eui) {
-        //DeviceServiceClient client;
-        Device device = null;
-        try {
-            client = RestClientBuilder.newBuilder()
-                    .baseUri(new URI(authHost))
-                    .followRedirects(true)
-                    .build(DeviceServiceClient.class);
-            device = client.getDevice(eui, appKey);
-        } catch (URISyntaxException ex) {
-            LOG.error(ex.getMessage());
-            // TODO: notyfikacja użytkownika o błędzie
-        } catch (ProcessingException ex) {
-            LOG.error(ex.getMessage());
-        } catch (WebApplicationException ex) {
-            LOG.error(ex.getMessage());
-        } catch (Exception ex) {
-            LOG.error(ex.getMessage());
-            // TODO: notyfikacja użytkownika o błędzie
-        }
-        return device;
-    } */
+    /*
+     * private Device getDevice(String eui) {
+     * //DeviceServiceClient client;
+     * Device device = null;
+     * try {
+     * client = RestClientBuilder.newBuilder()
+     * .baseUri(new URI(authHost))
+     * .followRedirects(true)
+     * .build(DeviceServiceClient.class);
+     * device = client.getDevice(eui, appKey);
+     * } catch (URISyntaxException ex) {
+     * LOG.error(ex.getMessage());
+     * // TODO: notyfikacja użytkownika o błędzie
+     * } catch (ProcessingException ex) {
+     * LOG.error(ex.getMessage());
+     * } catch (WebApplicationException ex) {
+     * LOG.error(ex.getMessage());
+     * } catch (Exception ex) {
+     * LOG.error(ex.getMessage());
+     * // TODO: notyfikacja użytkownika o błędzie
+     * }
+     * return device;
+     * }
+     */
 
     protected boolean sendDeviceDefined(Device device, MessageEnvelope wrapper) {
         // project/device implementation goes here
