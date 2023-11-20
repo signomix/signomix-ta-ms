@@ -6,7 +6,8 @@ import javax.inject.Inject;
 import org.eclipse.microprofile.reactive.messaging.Incoming;
 import org.jboss.logging.Logger;
 
-import com.signomix.messaging.application.usecase.MailingUC;
+import com.signomix.messaging.application.usecase.MqttLogic;
+import com.signomix.messaging.application.usecase.ProcessNotificationMessageUC;
 
 @ApplicationScoped
 public class MqClient {
@@ -16,7 +17,7 @@ public class MqClient {
 
 
     @Inject
-    MailingUC processMessageUseCase;
+    ProcessNotificationMessageUC processMessageUseCase;
 
     /* @Incoming("mailing")
     public void processMailing(byte[] bytes) {

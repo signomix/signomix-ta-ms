@@ -28,7 +28,7 @@ import io.smallrye.common.annotation.NonBlocking;
 
 @ApplicationScoped
 public class MailingUC {
-    private static final Logger LOG = Logger.getLogger(MailingUC.class);
+    private static final Logger LOG = Logger.getLogger(MqttLogic.class);
 
     @Inject
     @DataSource("iot")
@@ -50,7 +50,7 @@ public class MailingUC {
     // @ConfigProperty(name = "messaging.processor.class")
     //String usecaseClassName;
 
-    @Inject MessageProcessorPort messageAdapter = null;
+    @Inject MessageProcessorAdapter messageAdapter = null;
 
     void onStart(@Observes StartupEvent ev) {
         dao = new IotDatabaseDao();

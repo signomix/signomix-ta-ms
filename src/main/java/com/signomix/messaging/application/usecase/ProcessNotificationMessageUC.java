@@ -1,7 +1,5 @@
 package com.signomix.messaging.application.usecase;
 
-import java.lang.reflect.InvocationTargetException;
-
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
@@ -13,7 +11,7 @@ import com.signomix.common.db.IotDatabaseDao;
 import com.signomix.common.db.IotDatabaseIface;
 import com.signomix.messaging.adapter.out.MailerService;
 import com.signomix.messaging.adapter.out.MessageProcessorAdapter;
-import com.signomix.messaging.application.port.out.MessageProcessorPort;
+import com.signomix.messaging.adapter.out.MqttProcessorAdapter;
 
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.agroal.DataSource;
@@ -49,7 +47,10 @@ public class ProcessNotificationMessageUC {
     @ConfigProperty(name = "messaging.processor.class")
     String usecaseClassName;
 
-    @Inject MessageProcessorPort messagePort;
+    @Inject 
+    MessageProcessorAdapter messagePort;
+    @Inject
+    MqttProcessorAdapter mqttPort;
 
     void onStart(@Observes StartupEvent ev) {
         dao = new IotDatabaseDao();
