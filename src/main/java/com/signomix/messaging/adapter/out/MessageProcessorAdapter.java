@@ -15,7 +15,9 @@ import javax.ws.rs.WebApplicationException;
 
 import org.cricketmsf.microsite.cms.Document;
 import org.eclipse.microprofile.config.ConfigProvider;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
+import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -31,6 +33,7 @@ import com.signomix.messaging.application.usecase.AuthUC;
 import com.signomix.messaging.application.usecase.DeviceUC;
 import com.signomix.messaging.domain.MailingAction;
 import com.signomix.messaging.domain.Message;
+import com.signomix.messaging.domain.SmsPlanetResponse;
 import com.signomix.messaging.domain.Status;
 import com.signomix.messaging.webhook.WebhookService;
 
@@ -49,6 +52,16 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
 
     @Inject
     DeviceUC deviceUC;
+
+    @RestClient
+    @Inject
+    SmsplanetClient smsplanetClient;
+
+    @ConfigProperty(name = "signomix.smsplanet.key", defaultValue = "")
+    String smsKey;
+
+    @ConfigProperty(name = "signomix.smsplanet.password", defaultValue = "")
+    String smsPassword;
 
     MailingActionRepository mailingRepository;
 
@@ -182,10 +195,20 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
                             break;
                         case "SMS":
                             if (user.credits > 0) {
-                                SmsplanetService smsService = new SmsplanetService();
-                                smsService.send(user, address, new Message(wrapper.eui, wrapper.message));
+                                // SmsplanetService smsService = new SmsplanetService();
+                                // smsService.send(user, address, new Message(wrapper.eui, wrapper.message));
+                                LOG.debug("SMSPLANET: "+" SIGNOMIX "+user.phonePrefix+address+" test "+wrapper.message);
+                                SmsPlanetResponse response = smsplanetClient.sendSms(
+                                    smsKey, 
+                                    smsPassword, 
+                                    "SIGNOMIX", 
+                                    user.phonePrefix + address,
+                                    wrapper.type,
+                                    wrapper.type+": "+wrapper.message);
+                                LOG.debug("SMSPLANET RESPONSE: "+response.messageId+" "+response.errorCode+" "+response.errorMsg);
                             } else {
                                 // TODO: error
+                                LOG.debug(messageChannel + " not sent, no credits");
                             }
                             break;
 
