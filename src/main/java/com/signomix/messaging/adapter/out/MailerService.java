@@ -53,6 +53,7 @@ public class MailerService implements NotificationIface {
 
     @Override
     public String send(String recipient, String nodeName, String message) {
+        LOG.info("sending email to " + recipient + " with message: " + message);
         try {
             mailer.send(Mail.withText(recipient, nodeName, message));
             return "OK";

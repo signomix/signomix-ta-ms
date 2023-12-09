@@ -30,11 +30,6 @@ public class AuthUC {
     //TODO: move to config
     private long sessionTokenLifetime = 30; // minutes
     private long permanentTokenLifetime = 10 * 365 * 24 * 60; // 10 years in minutes
-    
-    @ConfigProperty(name = "signomix.app.key", defaultValue = "not_configured")
-    String appKey;
-    @ConfigProperty(name = "signomix.auth.host", defaultValue = "not_configured")
-    String authHost;
 
 
     @Inject

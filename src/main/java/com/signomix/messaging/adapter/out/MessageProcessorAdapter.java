@@ -334,7 +334,7 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
         return document;
     }
 
-    private void processDirectEmail(MessageEnvelope wrapper) {
+    public void processDirectEmail(MessageEnvelope wrapper) {
         LOG.debug("DIRECT_EMAIL");
         mailerService.sendEmail(wrapper.user.email, wrapper.subject, wrapper.message);
     }
