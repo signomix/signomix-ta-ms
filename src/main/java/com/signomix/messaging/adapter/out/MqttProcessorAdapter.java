@@ -50,6 +50,9 @@ public class MqttProcessorAdapter implements MessageProcessorPort {
     @Inject
     DeviceUC deviceUC;
 
+    @Inject
+    SmsplanetService smsService;
+
     MailingActionRepository mailingRepository;
 
     public MqttProcessorAdapter() {
@@ -148,7 +151,7 @@ public class MqttProcessorAdapter implements MessageProcessorPort {
                         case "SMS":
                             LOG.info("sending with SMS");
                             if (user.credits > 0) {
-                                SmsplanetService smsService = new SmsplanetService();
+                                
                                 smsService.send(user, address, new Message(deviceEui, messageText));
                             } else {
                                 // TODO: error
