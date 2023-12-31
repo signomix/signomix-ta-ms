@@ -34,8 +34,10 @@ public class UserLogic {
     @ConfigProperty(name = "signomix.mqtt.field.separator", defaultValue = ";")
     String mqttFieldSeparator;
 
-    @ConfigProperty(name = "signomix.service.url", defaultValue = "https://cloud.locelhost")
-    String serviceUrl;
+    @ConfigProperty(name = "signomix.api.url", defaultValue = "https://localhost")
+    String apiUrl;
+    @ConfigProperty(name = "signomix.webapp.url", defaultValue = "https://cloud.localhost")
+    String webappUrl;
 
     @Inject
     @DataSource("user")
@@ -96,7 +98,7 @@ public class UserLogic {
 
         String message = 
             "<p>Thank you for registering with Signomix.</p>"
-            +"<p>To activate your account, please confirm your registration by clicking on <a href=\"" + serviceUrl + "/api/confirm?key="+ user.confirmString + "\">this link</a>.<br>"
+            +"<p>To activate your account, please confirm your registration by clicking on <a href=\"" + apiUrl + "/api/account/confirm?key="+ user.confirmString+"&r="+webappUrl + "\">this link</a>.<br>"
             +"If you have any concerns or did not initiate this registration, please send e-mail to signomix@signomix.com.<br>"
             +"If you prefer not to register, you can simply ignore this email.<br>"
             +"We look forward to welcoming you to Signomix.</p>"
@@ -104,7 +106,7 @@ public class UserLogic {
             +"Grzegorz Skorupa</p>"
             +"<p></p>"
             +"<p>Dziękuję za rejestrację w Signomix.</p>"
-            +"<p>Aby aktywować swoje konto, proszę o potwierdzenie rejestracji, klikając na <a href=\"" + serviceUrl + "/api/confirm?key="+ user.confirmString + "\">ten link</a>.<br>"
+            +"<p>Aby aktywować swoje konto, proszę o potwierdzenie rejestracji, klikając na <a href=\"" + apiUrl + "/api/account/confirm?key="+ user.confirmString+"&r="+webappUrl + "\">ten link</a>.<br>"
             +"Jeśli masz jakiekolwiek wątpliwości lub nie zainicjowałeś/aś tej rejestracji, skontaktuj się wysyłając e-mail na adres signomix@signomix.com.<br>"
             +"Jeśli nie chcesz się rejestrować, możesz po prostu zignorować tę wiadomość.<br>"
             +"Czekamy z niecierpliwością na powitanie Cię w Signomiksie.</p>"
