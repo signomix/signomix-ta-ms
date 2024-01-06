@@ -25,8 +25,10 @@ public class UserLogic {
     @Inject
     Logger logger;
 
-    /* @Inject
-    MailerService mailerService; */
+    /*
+     * @Inject
+     * MailerService mailerService;
+     */
 
     @Inject
     MessageProcessorAdapter messagePort;
@@ -78,6 +80,9 @@ public class UserLogic {
             case "removed":
                 sendAccountRemovedEmail(userId);
                 break;
+            case "password_reset":
+                sendPasswordResetEmail(userId);
+                break;
             default:
         }
     }
@@ -94,41 +99,148 @@ public class UserLogic {
             logger.error("User not found: " + userLogin);
             return;
         }
-        String subject = "Confirm Your Signomix Registration";
+        String subject_en = "Confirm Your Signomix Registration";
+        String subject_pl = "Potwierdź rejestrację w Signomix";
+        String subject;
+        if (user.preferredLanguage.equalsIgnoreCase("pl")) {
+            subject = subject_pl;
+        } else {
+            subject = subject_en;
+        }
 
-        String message = 
-            "<p>Thank you for registering with Signomix.</p>"
-            +"<p>To activate your account, please confirm your registration by clicking on <a href=\"" + apiUrl + "/api/account/confirm?key="+ user.confirmString+"&r="+webappUrl + "\">this link</a>.<br>"
-            +"If you have any concerns or did not initiate this registration, please send e-mail to signomix@signomix.com.<br>"
-            +"If you prefer not to register, you can simply ignore this email.<br>"
-            +"We look forward to welcoming you to Signomix.</p>"
-            +"<p>Best regards,<br>"
-            +"Grzegorz Skorupa</p>"
-            +"<p></p>"
-            +"<p>Dziękuję za rejestrację w Signomix.</p>"
-            +"<p>Aby aktywować swoje konto, proszę o potwierdzenie rejestracji, klikając na <a href=\"" + apiUrl + "/api/account/confirm?key="+ user.confirmString+"&r="+webappUrl + "\">ten link</a>.<br>"
-            +"Jeśli masz jakiekolwiek wątpliwości lub nie zainicjowałeś/aś tej rejestracji, skontaktuj się wysyłając e-mail na adres signomix@signomix.com.<br>"
-            +"Jeśli nie chcesz się rejestrować, możesz po prostu zignorować tę wiadomość.<br>"
-            +"Czekamy z niecierpliwością na powitanie Cię w Signomiksie.</p>"
-            +"<p>Pozdrawiam,<br>"
-            +"Grzegorz Skorupa</p>";
+        String message_en = "<p>Thank you for registering with Signomix.</p>"
+                + "<p>To activate your account, please confirm your registration by clicking on <a href=\"" + apiUrl
+                + "/api/account/confirm?key=" + user.confirmString + "&r=" + webappUrl + "\">this link</a>.<br>"
+                + "If you have any concerns or did not initiate this registration, please send e-mail to signomix@signomix.com.<br>"
+                + "If you prefer not to register, you can simply ignore this email.<br>"
+                + "We look forward to welcoming you to Signomix.</p>"
+                + "<p>Best regards,<br>"
+                + "Grzegorz Skorupa</p>";
+        String message_pl = "<p>Dziękuję za rejestrację w Signomix.</p>"
+                + "<p>Aby aktywować swoje konto, proszę o potwierdzenie rejestracji, klikając na <a href=\"" + apiUrl
+                + "/api/account/confirm?key=" + user.confirmString + "&r=" + webappUrl + "\">ten link</a>.<br>"
+                + "Jeśli masz jakiekolwiek wątpliwości lub nie zainicjowałeś/aś tej rejestracji, skontaktuj się wysyłając e-mail na adres signomix@signomix.com.<br>"
+                + "Jeśli nie chcesz się rejestrować, możesz po prostu zignorować tę wiadomość.<br>"
+                + "Czekamy z niecierpliwością na powitanie Cię w Signomiksie.</p>"
+                + "<p>Pozdrawiam,<br>"
+                + "Grzegorz Skorupa</p>";
+
+        String message;
+        if (user.preferredLanguage.equalsIgnoreCase("pl")) {
+            message = message_pl;
+        } else {
+            message = message_en;
+        }
         MessageEnvelope envelope = new MessageEnvelope();
-        envelope.message=message;
-        envelope.subject=subject;
-        envelope.user=user;
+        envelope.message = message;
+        envelope.subject = subject;
+        envelope.user = user;
+        messagePort.processDirectEmail(envelope);
+    }
+
+    private void sendPasswordResetEmail(String userLogin) {
+        User user = null;
+        try {
+            user = userDao.getUser(userLogin);
+        } catch (IotDatabaseException e) {
+            logger.error(e.getMessage());
+            e.printStackTrace();
+        }
+        if (null == user) {
+            logger.error("User not found: " + userLogin);
+            return;
+        }
+        String subject_en = "Signomix Password Reset";
+        String subject_pl = "Reset hasła w Signomix";
+
+        String message_en = "<p>Dear User,</p>"
+                + "<p>We have received a request to reset your password.</p>"
+                + "<p>To reset your password, please click on <a href=\"" + apiUrl
+                + "/api/account/reset?key=" + user.confirmString + "&r=" + webappUrl + "\">this link</a>.<br>"
+                + "If you have any concerns or did not initiate this request, please send e-mail to signomix@signomix.com.<br>" 
+                + "If you prefer not to reset your password, you can simply ignore this email.</p>"
+                + "<p>Best regards,<br>"
+                + "Grzegorz Skorupa</p>";
+        String message_pl = "<p>Szanowny Użytkowniku,</p>"
+                + "<p>Otrzymaliśmy prośbę o zresetowanie Twojego hasła.</p>"
+                + "<p>Aby zresetować hasło, proszę o kliknięcie na <a href=\"" + apiUrl
+                + "/api/account/reset?key=" + user.confirmString + "&r=" + webappUrl + "\">ten link</a>.<br>"
+                + "Jeśli masz jakiekolwiek wątpliwości lub nie zainicjowałeś/aś tej prośby, skontaktuj się wysyłając e-mail na adres signomix@signomix.com.<br>"    
+                + "Jeśli nie chcesz zresetować hasła, możesz po prostu zignorować tę wiadomość.</p>"
+                + "<p>Pozdrawiam,<br>"
+                + "Grzegorz Skorupa</p>";
+
+        String message;
+        if (user.preferredLanguage.equalsIgnoreCase("pl")) {
+            message = message_pl;
+        } else {
+            message = message_en;
+        }
+        String subject;
+        if (user.preferredLanguage.equalsIgnoreCase("pl")) {
+            subject = subject_pl;
+        } else {
+            subject = subject_en;
+        }
+        MessageEnvelope envelope = new MessageEnvelope();
+        envelope.message = message;
+        envelope.subject = subject;
+        envelope.user = user;
         messagePort.processDirectEmail(envelope);
     }
 
     private void sendConfirmationEmail(String user) {
-
+        String subject = "Signomix Registration Confirmed";
+        // TODO: send email
     }
 
-    private void sendAccountRemoveRequestedEmail(String user) {
+    private void sendAccountRemoveRequestedEmail(String userLogin) {
+        String subject_en = "Signomix: Account Removal Requested";
+        String subject_pl = "Signomix: Prośba o usunięcie konta";
+        String message_en = "<p>Dear User,</p>"
+                + "<p>We have received a request to remove your account from Signomix.</p>"
+                + "<p>If you did not initiate this request or changed your mind, please send e-mail to signomix@signomix.com.<br>"
+                + "Otherwise your account will be removed in 7 days.</p>";
+        String message_pl = "<p>Szanowny Użytkowniku,</p>"
+                + "<p>Otrzymaliśmy prośbę o usunięcie Twojego konta z Signomix.</p>"
+                + "<p>Jeśli nie zainicjowałeś/aś tej prośby lub zmieniłeś/aś zdanie, proszę o wysłanie e-maila na adres signomix@signomix.com.<br>"
+                + "W przeciwnym razie Twoje konto zostanie usunięte za 7 dni.</p>";
+
+        User user = null;
+        try {
+            user = userDao.getUser(userLogin);
+        } catch (IotDatabaseException e) {
+            logger.error(e.getMessage());
+            e.printStackTrace();
+        }
+        if (null == user) {
+            logger.error("User not found: " + userLogin);
+            return;
+        }
+        String message;
+        if (user.preferredLanguage.equalsIgnoreCase("pl")) {
+            message = message_pl;
+        } else {
+            message = message_en;
+        }
+        String subject;
+        if (user.preferredLanguage.equalsIgnoreCase("pl")) {
+            subject = subject_pl;
+        } else {
+            subject = subject_en;
+        }
+
+        MessageEnvelope envelope = new MessageEnvelope();
+        envelope.message = message;
+        envelope.subject = subject;
+        envelope.user = user;
+        messagePort.processDirectEmail(envelope);
 
     }
 
     private void sendAccountRemovedEmail(String user) {
-
+        // TODO: send email
+        // TODO: remove user from database only after sending email
     }
 
 }
