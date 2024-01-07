@@ -117,6 +117,10 @@ public class MqttProcessorAdapter implements MessageProcessorPort {
             String deviceEui = params[1];
             String messageType = params[2];
             String messageText = params[3];
+            String messageSubject = "";
+            if (params.length > 4) {
+                messageSubject = params[4];
+            }
 
             String address = null;
             String messageChannel = null;
@@ -142,17 +146,21 @@ public class MqttProcessorAdapter implements MessageProcessorPort {
                     switch (messageChannel.toUpperCase()) {
                         case "SMTP":
                             LOG.info("sending with SMTP");
-                            mailerService.sendEmail(address, deviceEui, messageText);
+                            if (null == messageSubject || messageSubject.isEmpty()) {
+                                messageSubject = "Signomix notification";
+                            } else {
+                                mailerService.sendEmail(address, messageSubject, messageText);
+                            }
                             break;
                         case "WEBHOOK":
                             LOG.info("sending with WEBHOOK");
-                            new WebhookService().send(address, new Message(deviceEui, messageText));
+                            new WebhookService().send(address, new Message(deviceEui, messageText, messageSubject));
                             break;
                         case "SMS":
                             LOG.info("sending with SMS");
                             if (user.credits > 0) {
-                                
-                                smsService.send(user, address, new Message(deviceEui, messageText));
+
+                                smsService.send(user, address, new Message(deviceEui, messageText, messageSubject));
                             } else {
                                 // TODO: error
                             }

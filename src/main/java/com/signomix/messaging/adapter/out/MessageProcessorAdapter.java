@@ -188,10 +188,14 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
                 if (null != address && !address.isEmpty()) {
                     switch (messageChannel.toUpperCase()) {
                         case "SMTP":
-                            mailerService.sendEmail(address, wrapper.eui, wrapper.message);
+                            if(null==wrapper.subject || wrapper.subject.isEmpty()){
+                                mailerService.sendEmail(address, wrapper.eui, wrapper.message);
+                            }else{
+                                mailerService.sendEmail(address, wrapper.subject, wrapper.message);
+                            }
                             break;
                         case "WEBHOOK":
-                            new WebhookService().send(address, new Message(wrapper.eui, wrapper.message));
+                            new WebhookService().send(address, new Message(wrapper.eui, wrapper.message, wrapper.subject));
                             break;
                         case "SMS":
                             if (user.credits > 0) {
