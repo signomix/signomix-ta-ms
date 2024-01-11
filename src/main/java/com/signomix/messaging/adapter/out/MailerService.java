@@ -1,5 +1,8 @@
 package com.signomix.messaging.adapter.out;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
@@ -34,7 +37,13 @@ public class MailerService implements NotificationIface {
     public String sendHtmlEmail(String toAddress, String subject, String body) {
         try {
             LOG.debug("sendEmail3: " + toAddress + " " + subject);
-            mailer.send(Mail.withHtml(toAddress, subject, body));
+            String[] r = toAddress.split(",");
+            ArrayList<String> recipients = new ArrayList<>(Arrays.asList(r));
+            Mail mail = Mail.withHtml(recipients.get(0).trim(), subject, body);
+            for (int i = 1; i < recipients.size(); i++) {
+                mail = mail.addTo(recipients.get(i).trim());
+            }
+            mailer.send(mail);
         } catch (Exception ex) {
             LOG.error("["+toAddress+"] "+ex.getMessage());
         }
@@ -45,17 +54,29 @@ public class MailerService implements NotificationIface {
     private void sendInThread(String toAddress, String subject, String body){
         try {
             LOG.debug("sendEmail2: " + toAddress + " " + subject);
-            mailer.send(Mail.withHtml(toAddress, subject, body));
+            String[] r = toAddress.split(",");
+            ArrayList<String> recipients = new ArrayList<>(Arrays.asList(r));
+            Mail mail = Mail.withHtml(recipients.get(0).trim(), subject, body);
+            for (int i = 1; i < recipients.size(); i++) {
+                mail = mail.addTo(recipients.get(i).trim());
+            }
+            mailer.send(mail);
         } catch (Exception ex) {
             LOG.error("["+toAddress+"] "+ex.getMessage());
         }
     }
 
     @Override
-    public String send(String recipient, String nodeName, String message) {
-        LOG.info("sending email to " + recipient + " with message: " + message);
+    public String send(String recipient, String subject, String body) {
+        LOG.info("sending email to " + recipient + " with message: " + body);
         try {
-            mailer.send(Mail.withText(recipient, nodeName, message));
+            String[] r = recipient.split(",");
+            ArrayList<String> recipients = new ArrayList<>(Arrays.asList(r));
+            Mail mail = Mail.withText(recipients.get(0).trim(), subject, body);
+            for (int i = 1; i < recipients.size(); i++) {
+                mail = mail.addTo(recipients.get(i).trim());
+            }
+            mailer.send(mail);
             return "OK";
         } catch (Exception ex) {
             LOG.error(ex.getMessage());
