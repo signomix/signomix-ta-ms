@@ -148,9 +148,8 @@ public class MqttProcessorAdapter implements MessageProcessorPort {
                             LOG.info("sending with SMTP");
                             if (null == messageSubject || messageSubject.isEmpty()) {
                                 messageSubject = "Signomix notification";
-                            } else {
-                                mailerService.sendEmail(address, messageSubject, messageText);
                             }
+                            mailerService.sendEmail(address, messageSubject, messageText);
                             break;
                         case "WEBHOOK":
                             LOG.info("sending with WEBHOOK");
