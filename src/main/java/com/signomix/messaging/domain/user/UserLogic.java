@@ -155,16 +155,16 @@ public class UserLogic {
 
         String message_en = "<p>Dear User,</p>"
                 + "<p>We have received a request to reset your password.</p>"
-                + "<p>To reset your password, please click on <a href=\"" + apiUrl
-                + "/api/account/reset?key=" + user.confirmString + "&r=" + webappUrl + "\">this link</a>.<br>"
+                + "<p>To reset your password, please click on <a href=\"" + webappUrl
+                + "/account/setpassword?key=" + user.confirmString +"&login="+user.uid+"&language="+user.preferredLanguage + "\">this link</a>.<br>"
                 + "If you have any concerns or did not initiate this request, please send e-mail to signomix@signomix.com.<br>" 
                 + "If you prefer not to reset your password, you can simply ignore this email.</p>"
                 + "<p>Best regards,<br>"
                 + "Grzegorz Skorupa</p>";
         String message_pl = "<p>Szanowny Użytkowniku,</p>"
                 + "<p>Otrzymaliśmy prośbę o zresetowanie Twojego hasła.</p>"
-                + "<p>Aby zresetować hasło, proszę o kliknięcie na <a href=\"" + apiUrl
-                + "/api/account/reset?key=" + user.confirmString + "&r=" + webappUrl + "\">ten link</a>.<br>"
+                + "<p>Aby zresetować hasło, proszę o kliknięcie na <a href=\"" + webappUrl
+                + "/account/setpassword?key=" + user.confirmString +"&login="+user.uid+"&language="+user.preferredLanguage+ "\">ten link</a>.<br>"
                 + "Jeśli masz jakiekolwiek wątpliwości lub nie zainicjowałeś/aś tej prośby, skontaktuj się wysyłając e-mail na adres signomix@signomix.com.<br>"    
                 + "Jeśli nie chcesz zresetować hasła, możesz po prostu zignorować tę wiadomość.</p>"
                 + "<p>Pozdrawiam,<br>"
