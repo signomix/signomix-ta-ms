@@ -188,28 +188,31 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
                 if (null != address && !address.isEmpty()) {
                     switch (messageChannel.toUpperCase()) {
                         case "SMTP":
-                            if(null==wrapper.subject || wrapper.subject.isEmpty()){
+                            if (null == wrapper.subject || wrapper.subject.isEmpty()) {
                                 mailerService.sendEmail(address, wrapper.eui, wrapper.message);
-                            }else{
+                            } else {
                                 mailerService.sendEmail(address, wrapper.subject, wrapper.message);
                             }
                             break;
                         case "WEBHOOK":
-                            new WebhookService().send(address, new Message(wrapper.eui, wrapper.message, wrapper.subject));
+                            new WebhookService().send(address,
+                                    new Message(wrapper.eui, wrapper.message, wrapper.subject));
                             break;
                         case "SMS":
                             if (user.credits > 0) {
                                 // SmsplanetService smsService = new SmsplanetService();
                                 // smsService.send(user, address, new Message(wrapper.eui, wrapper.message));
-                                LOG.debug("SMSPLANET: "+" SIGNOMIX "+user.phonePrefix+address+" test "+wrapper.message);
+                                LOG.debug("SMSPLANET: " + " SIGNOMIX " + user.phonePrefix + address + " test "
+                                        + wrapper.message);
                                 SmsPlanetResponse response = smsplanetClient.sendSms(
-                                    smsKey, 
-                                    smsPassword, 
-                                    "SIGNOMIX", 
-                                    user.phonePrefix + address,
-                                    wrapper.type,
-                                    wrapper.type+": "+wrapper.message);
-                                LOG.debug("SMSPLANET RESPONSE: "+response.messageId+" "+response.errorCode+" "+response.errorMsg);
+                                        smsKey,
+                                        smsPassword,
+                                        "SIGNOMIX",
+                                        user.phonePrefix + address,
+                                        wrapper.type,
+                                        wrapper.type + ": " + wrapper.message);
+                                LOG.debug("SMSPLANET RESPONSE: " + response.messageId + " " + response.errorCode + " "
+                                        + response.errorMsg);
                             } else {
                                 // TODO: error
                                 LOG.debug(messageChannel + " not sent, no credits");
@@ -231,8 +234,8 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
         String docUid = action.getDocUid();
         String err = null;
         String target = action.getTarget();
-        Document docPl = getDocument(docUid, "pl");
-        Document docEn = getDocument(docUid, "en");
+        Document docPl = getMailingDocument(docUid, "pl");
+        Document docEn = getMailingDocument(docUid, "en");
         if (null == docPl && null == docEn) {
             err = "document not found";
             LOG.error(err + " " + docUid);
@@ -273,6 +276,7 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
                     content = contentPL;
                     try {
                         content = content.replaceFirst("\\$user.name", user.name);
+                        content = content.replaceFirst("\\$user.surname", user.name);
                         content = content.replaceFirst("\\$mailing.name", user.surname);
                         content = content.replaceFirst("\\$user.uid", user.uid);
                     } catch (Exception e) {
@@ -285,6 +289,7 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
                     content = contentEN;
                     try {
                         content = content.replaceFirst("\\$user.name", user.name);
+                        content = content.replaceFirst("\\$user.surname", user.name);
                         content = content.replaceFirst("\\$mailing.name", user.surname);
                         content = content.replaceFirst("\\$user.uid", user.uid);
                     } catch (Exception e) {
@@ -315,27 +320,30 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
         processMailing(wrapper.message, wrapper.user.role);
     }
 
-    private Document getDocument(String uid, String language) {
-        ContentServiceClient client;
-        Document document = null;
-        try {
-            client = RestClientBuilder.newBuilder()
-                    .baseUri(new URI(authHost))
-                    .followRedirects(true)
-                    .build(ContentServiceClient.class);
-            document = client.getDocument(uid, appKey, language);
-        } catch (URISyntaxException ex) {
-            LOG.error(ex.getMessage());
-            // TODO: notyfikacja użytkownika o błędzie
-        } catch (ProcessingException ex) {
-            LOG.error(ex.getMessage());
-        } catch (WebApplicationException ex) {
-            LOG.error(ex.getMessage());
-        } catch (Exception ex) {
-            LOG.error(ex.getMessage());
-            // TODO: notyfikacja użytkownika o błędzie
+    private Document getWelcomeDocument(String uid, String language) {
+        Document doc = new Document();
+        doc.setUid(uid);
+        switch (language) {
+            case "pl":
+                doc.setTitle("Test welcome");
+                doc.setContent("Test content");
+                break;
+            default:
+                doc.setTitle("Test welcome");
+                doc.setContent("Test content");
+                break;
         }
-        return document;
+
+
+        return doc;
+    }
+
+    private Document getMailingDocument(String uid, String language) {
+        Document doc = new Document();
+        doc.setUid(uid);
+        doc.setTitle("Test mailing");
+        doc.setContent("Test content");
+        return doc;
     }
 
     public void processDirectEmail(MessageEnvelope wrapper) {
@@ -378,8 +386,8 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
             LOG.error("user " + userNumber + " e-mail not set");
             return;
         }
-        Document docPl = getDocument(welcomeDocUid, "pl");
-        Document docEn = getDocument(welcomeDocUid, "en");
+        Document docPl = getWelcomeDocument(welcomeDocUid, "pl");
+        Document docEn = getWelcomeDocument(welcomeDocUid, "en");
         if (null == docPl && null == docEn) {
             LOG.error("document not found " + welcomeDocUid);
             return;
@@ -394,7 +402,7 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
                     subject = URLDecoder.decode(docToSend.getTitle(), "UTF-8");
                     content = URLDecoder.decode(docToSend.getContent(), "UTF-8");
                     content = content.replaceFirst("\\$user.name", user.name);
-                    content = content.replaceFirst("\\$mailing.name", user.surname);
+                    content = content.replaceFirst("\\$user.surname", user.surname);
                     content = content.replaceFirst("\\$user.uid", user.uid);
                     mailerService.sendEmail(user.email, subject, content);
                     break;
@@ -404,7 +412,7 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
                     subject = URLDecoder.decode(docToSend.getTitle(), "UTF-8");
                     content = URLDecoder.decode(docToSend.getContent(), "UTF-8");
                     content = content.replaceFirst("\\$user.name", user.name);
-                    content = content.replaceFirst("\\$mailing.name", user.surname);
+                    content = content.replaceFirst("\\$user.surname", user.surname);
                     content = content.replaceFirst("\\$user.uid", user.uid);
                     mailerService.sendEmail(user.email, subject, content);
                     break;

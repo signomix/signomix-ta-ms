@@ -39,10 +39,10 @@ public class ProcessNotificationMessageUC {
     // @Inject
     // PushoverService pushoverService;
 
-    @ConfigProperty(name = "signomix.app.key", defaultValue = "not_configured")
+/*     @ConfigProperty(name = "signomix.app.key", defaultValue = "not_configured")
     String appKey;
     @ConfigProperty(name = "signomix.auth.host", defaultValue = "not_configured")
-    String authHost;
+    String authHost; */
 
     @ConfigProperty(name = "messaging.processor.class")
     String usecaseClassName;
