@@ -1,9 +1,7 @@
 package com.signomix.messaging.adapter.out;
 
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
@@ -13,7 +11,6 @@ import javax.inject.Inject;
 import javax.ws.rs.ProcessingException;
 import javax.ws.rs.WebApplicationException;
 
-import org.cricketmsf.microsite.cms.Document;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
 import org.jboss.logging.Logger;
@@ -25,10 +22,10 @@ import com.signomix.common.MessageEnvelope;
 import com.signomix.common.User;
 import com.signomix.common.db.IotDatabaseIface;
 import com.signomix.common.iot.Device;
-import com.signomix.messaging.application.port.out.ContentServiceClient;
 import com.signomix.messaging.application.port.out.MessageProcessorPort;
 import com.signomix.messaging.application.usecase.AuthUC;
 import com.signomix.messaging.application.usecase.DeviceUC;
+import com.signomix.messaging.domain.Document;
 import com.signomix.messaging.domain.MailingAction;
 import com.signomix.messaging.domain.Message;
 import com.signomix.messaging.domain.Status;
@@ -193,18 +190,23 @@ public class MqttProcessorAdapter implements MessageProcessorPort {
         String contentPL;
         String subjectEN;
         String contentEN;
-        try {
+        subjectPL = docPl.metadata.get("title");
+        contentPL = docPl.content;
+        subjectEN = docEn.metadata.get("title");
+        contentEN = docEn.content;
+        /* try {
             subjectPL = URLDecoder.decode(docPl.getTitle(), "UTF-8");
             contentPL = URLDecoder.decode(docPl.getContent(), "UTF-8");
             subjectEN = URLDecoder.decode(docEn.getTitle(), "UTF-8");
-            contentEN = URLDecoder.decode(docEn.getContent(), "UTF-8");
+            contentEN = URLDecoder.decode(docEn.getContent(), "UTF-8"); 
+
         } catch (UnsupportedEncodingException ex) {
             LOG.error(ex.getMessage());
             action.setStatus(Status.Failed);
             action.setError(ex.getMessage());
             // save?
             return;
-        }
+        } */
         action.setStartedAt(new Date());
         String subject;
         String content;
@@ -263,15 +265,19 @@ public class MqttProcessorAdapter implements MessageProcessorPort {
         processMailing(wrapper.message, wrapper.user.role);
     }
 
-    private Document getDocument(String uid, String language) {
-        ContentServiceClient client;
+    private Document getDocument(String path, String language) {
+        HcmsClient client;
         Document document = null;
+        String documentPath=path;
+        if(path.contains("{language}")) {
+            documentPath = path.replace("{language}", language);
+        }
         try {
             client = RestClientBuilder.newBuilder()
                     .baseUri(new URI(authHost))
                     .followRedirects(true)
-                    .build(ContentServiceClient.class);
-            document = client.getDocument(uid, appKey, language);
+                    .build(HcmsClient.class);
+            document = client.getDocument(documentPath);
         } catch (URISyntaxException ex) {
             LOG.error(ex.getMessage());
             // TODO: notyfikacja użytkownika o błędzie
@@ -313,12 +319,14 @@ public class MqttProcessorAdapter implements MessageProcessorPort {
         Document docToSend;
         String subject = "";
         String content = "";
-        try {
+        //try {
             switch (user.preferredLanguage.toUpperCase()) {
                 case "PL":
                     docToSend = docPl;
-                    subject = URLDecoder.decode(docToSend.getTitle(), "UTF-8");
-                    content = URLDecoder.decode(docToSend.getContent(), "UTF-8");
+                    /* subject = URLDecoder.decode(docToSend.getTitle(), "UTF-8");
+                    content = URLDecoder.decode(docToSend.getContent(), "UTF-8"); */
+                    subject = docToSend.metadata.get("title");
+                    content = docToSend.content;
                     content = content.replaceFirst("\\$user.name", user.name);
                     content = content.replaceFirst("\\$mailing.name", user.surname);
                     content = content.replaceFirst("\\$user.uid", user.uid);
@@ -327,18 +335,20 @@ public class MqttProcessorAdapter implements MessageProcessorPort {
                 // case "EN":
                 default:
                     docToSend = docEn;
-                    subject = URLDecoder.decode(docToSend.getTitle(), "UTF-8");
-                    content = URLDecoder.decode(docToSend.getContent(), "UTF-8");
+/*                     subject = URLDecoder.decode(docToSend.getTitle(), "UTF-8");
+                    content = URLDecoder.decode(docToSend.getContent(), "UTF-8"); */
+                    subject = docToSend.metadata.get("title");
+                    content = docToSend.content;
                     content = content.replaceFirst("\\$user.name", user.name);
                     content = content.replaceFirst("\\$mailing.name", user.surname);
                     content = content.replaceFirst("\\$user.uid", user.uid);
                     mailerService.sendEmail(user.email, subject, content);
                     break;
             }
-        } catch (UnsupportedEncodingException ex) {
+/*         } catch (UnsupportedEncodingException ex) {
             LOG.error(ex.getMessage());
             return;
-        }
+        } */
         mailerService.sendEmail(user.email, subject, content);
     }
 

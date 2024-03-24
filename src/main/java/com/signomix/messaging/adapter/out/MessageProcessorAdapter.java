@@ -44,8 +44,8 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
     protected MailerService mailerService;
     IotDatabaseIface dao;
 
-    String appKey;
-    String authHost;
+/*     String appKey;
+    String authHost; */
 
     @Inject
     AuthUC authUC;
@@ -521,13 +521,13 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
 
     @Override
     public void setApplicationKey(String key) {
-        this.appKey = key;
+        //this.appKey = key;
 
     }
 
     @Override
     public void setAuthHost(String authHost) {
-        this.authHost = authHost;
+        //this.authHost = authHost;
     }
 
     @Override

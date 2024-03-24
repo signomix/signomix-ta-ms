@@ -34,10 +34,10 @@ public class MqttLogic {
     @Inject
     MailingActionRepository mailingRepository;
 
-    @ConfigProperty(name = "signomix.app.key", defaultValue = "not_configured")
+/*     @ConfigProperty(name = "signomix.app.key", defaultValue = "not_configured")
     String appKey;
     @ConfigProperty(name = "signomix.auth.host", defaultValue = "not_configured")
-    String authHost;
+    String authHost; */
 
 
     @Inject MqttProcessorAdapter messageAdapter = null;
@@ -47,8 +47,8 @@ public class MqttLogic {
         dao.setDatasource(dataSource);
         try {
             messageAdapter.setMailerService(mailerService);
-            messageAdapter.setApplicationKey(appKey);
-            messageAdapter.setAuthHost(authHost);
+/*             messageAdapter.setApplicationKey(appKey);
+            messageAdapter.setAuthHost(authHost); */
             messageAdapter.setDao(dao);
             messageAdapter.setMailingRepository(mailingRepository);
         } catch (Exception e) {
