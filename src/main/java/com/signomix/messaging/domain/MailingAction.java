@@ -2,13 +2,13 @@ package com.signomix.messaging.domain;
 
 import java.util.Date;
 
-import javax.persistence.Entity;
+/* import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
+import javax.persistence.Id; */
 
-@Entity
+//@Entity
 public class MailingAction{
-    @Id @GeneratedValue private Long id;
+    /*@Id @GeneratedValue*/ private Long id;
     String docUid;
     String target;
     Status status;
