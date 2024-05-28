@@ -49,12 +49,41 @@ public class UserLogic {
     String hcmsApiPath;
     /**
      * Path to the document with the ask-to-confirm message. Resulting path using
-     * defaultValue
-     * given below will be: hcmsApiPath + /templates/{language}/ +
+     * defaultValue given below will be: 
+     * hcmsApiPath + /templates/{language}/ +
      * askToConfirmDocumentPath
      */
     @ConfigProperty(name = "signomix.hcms.ask-to-confirm", defaultValue = "ask-to-confirm.html")
     String askToConfirmDocumentPath;
+    /**
+     * Path to the document with the account-confirmed message. Resulting path using
+     * defaultValue given below will be: 
+     * hcmsApiPath + /templates/{language}/ + accountConfirmedDocumentPath
+     */
+    @ConfigProperty(name = "signomix.hcms.account-confirmed", defaultValue = "account-confirmed.html")
+    String accountConfirmedDocumentPath;
+    /**
+     * Path to the document with the password-reset message. Resulting path using
+     * defaultValue given below will be: 
+     * hcmsApiPath + /templates/{language}/ + passwordResetDocumentPath
+     */
+    @ConfigProperty(name = "signomix.hcms.password-reset", defaultValue = "password-reset.html")
+    String passwordResetDocumentPath;
+    /**
+     * Path to the document with the confirm-account-remove message. Resulting path using
+     * defaultValue given below will be: 
+     * hcmsApiPath + /templates/{language}/ + confirmAccountRemoveDocumentPath
+     */
+    @ConfigProperty(name = "signomix.hcms.confirm-account-remove", defaultValue = "confirm-account-remove.html")
+    String confirmAccountRemoveDocumentPath;
+    /**
+     * Path to the document with the account-removed message. Resulting path using
+     * defaultValue given below will be: 
+     * hcmsApiPath + /templates/{language}/ + accountRemovedDocumentPath
+     */
+    @ConfigProperty(name = "signomix.hcms.account-removed", defaultValue = "account-removed.html")
+    String accountRemovedDocumentPath;
+
 
     @Inject
     @DataSource("user")
@@ -129,7 +158,7 @@ public class UserLogic {
             doc = hcmsService.getDocument(hcmsApiPath + "/en/" + askToConfirmDocumentPath);
         }
         if (null == doc) {
-            logger.info("Document not found: " + doc.path);
+            logger.info("Document not found: " + askToConfirmDocumentPath);
             return;
         }
         String message = doc.content;
@@ -186,7 +215,24 @@ public class UserLogic {
             logger.error("User not found: " + userLogin);
             return;
         }
-        String subject_en = "Signomix Password Reset";
+        Document doc = null;
+        if (user.preferredLanguage.equalsIgnoreCase("pl")) {
+            doc = hcmsService.getDocument(hcmsApiPath + "/pl/" + passwordResetDocumentPath);
+        } else {
+            doc = hcmsService.getDocument(hcmsApiPath + "/en/" + passwordResetDocumentPath);
+        }
+        if (null == doc) {
+            logger.info("Document not found: " + passwordResetDocumentPath);
+            return;
+        }
+        String message = doc.content;
+        HashMap<String,String> valueMap = new HashMap<>();
+        valueMap.put("API_URL", apiUrl);
+        valueMap.put("WEBAPP_URL", webappUrl);
+
+        message = replacePlaceholders(message, user, valueMap);
+        String subject = doc.metadata.get("subject");
+/*         String subject_en = "Signomix Password Reset";
         String subject_pl = "Reset hasła w Signomix";
 
         String message_en = "<p>Dear User,</p>"
@@ -219,7 +265,8 @@ public class UserLogic {
             subject = subject_pl;
         } else {
             subject = subject_en;
-        }
+        } */
+
         MessageEnvelope envelope = new MessageEnvelope();
         envelope.message = message;
         envelope.subject = subject;
@@ -228,7 +275,7 @@ public class UserLogic {
     }
 
     /**
-     * Sends an email with a confirmation link to the user.
+     * Sends user a content created and activated email.
      * @param userLogin
      */
     private void sendConfirmationEmail(String userLogin) {
@@ -269,7 +316,7 @@ public class UserLogic {
     }
 
     private void sendAccountRemoveRequestedEmail(String userLogin) {
-        String subject_en = "Signomix: Account Removal Requested";
+/*         String subject_en = "Signomix: Account Removal Requested";
         String subject_pl = "Signomix: Prośba o usunięcie konta";
         String message_en = "<p>Dear User,</p>"
                 + "<p>We have received a request to remove your account from Signomix.</p>"
@@ -302,7 +349,37 @@ public class UserLogic {
             subject = subject_pl;
         } else {
             subject = subject_en;
+        } */
+
+        User user = null;
+        try {
+            user = userDao.getUser(userLogin);
+        } catch (IotDatabaseException e) {
+            logger.error(e.getMessage());
+            e.printStackTrace();
         }
+        if (null == user) {
+            logger.error("User not found: " + userLogin);
+            return;
+        }
+
+        Document doc = null;
+        if (user.preferredLanguage.equalsIgnoreCase("pl")) {
+            doc = hcmsService.getDocument(hcmsApiPath + "/pl/" + confirmAccountRemoveDocumentPath);
+        } else {
+            doc = hcmsService.getDocument(hcmsApiPath + "/en/" + confirmAccountRemoveDocumentPath);
+        }
+        if (null == doc) {
+            logger.info("Document not found: " + confirmAccountRemoveDocumentPath);
+            return;
+        }
+        String message = doc.content;
+        HashMap<String,String> valueMap = new HashMap<>();
+        valueMap.put("API_URL", apiUrl);
+        valueMap.put("WEBAPP_URL", webappUrl);
+
+        message = replacePlaceholders(message, user, valueMap);
+        String subject = doc.metadata.get("subject");
 
         MessageEnvelope envelope = new MessageEnvelope();
         envelope.message = message;
@@ -312,9 +389,44 @@ public class UserLogic {
 
     }
 
-    private void sendAccountRemovedEmail(String user) {
+    private void sendAccountRemovedEmail(String userLogin) {
         // TODO: send email
         // TODO: remove user from database only after sending email
+        User user = null;
+        try {
+            user = userDao.getUser(userLogin);
+        } catch (IotDatabaseException e) {
+            logger.error(e.getMessage());
+            e.printStackTrace();
+        }
+        if (null == user) {
+            logger.error("User not found: " + userLogin);
+            return;
+        }
+
+        Document doc = null;
+        if (user.preferredLanguage.equalsIgnoreCase("pl")) {
+            doc = hcmsService.getDocument(hcmsApiPath + "/pl/" + accountRemovedDocumentPath);
+        } else {
+            doc = hcmsService.getDocument(hcmsApiPath + "/en/" + accountRemovedDocumentPath);
+        }
+        if (null == doc) {
+            logger.info("Document not found: " + accountRemovedDocumentPath);
+            return;
+        }
+        String message = doc.content;
+        HashMap<String,String> valueMap = new HashMap<>();
+        valueMap.put("API_URL", apiUrl);
+        valueMap.put("WEBAPP_URL", webappUrl);
+
+        message = replacePlaceholders(message, user, valueMap);
+        String subject = doc.metadata.get("subject");
+
+        MessageEnvelope envelope = new MessageEnvelope();
+        envelope.message = message;
+        envelope.subject = subject;
+        envelope.user = user;
+        messagePort.processDirectEmail(envelope);
     }
 
     /**
