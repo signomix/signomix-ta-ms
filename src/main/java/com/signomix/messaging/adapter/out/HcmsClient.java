@@ -11,7 +11,7 @@ import com.signomix.messaging.domain.Document;
 
 @ApplicationScoped
 @RegisterRestClient(configKey="hcms-api")
-@Path("/api/docs")
+@Path("/api/document")
 public interface HcmsClient {
 
     /**
