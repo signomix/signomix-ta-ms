@@ -20,16 +20,20 @@ public class User {
     public String warningNotificationChannel = "";
     public String alertNotificationChannel = "";
     public Integer authStatus;
-    public long createdAt;
-    public long number;
-    public int services;
+    public Long createdAt;
+    public Long number;
+    public Integer services;
     public String phonePrefix;
-    public long credits;
-    public boolean autologin;
+    public Long credits;
+    public Boolean autologin;
     public String preferredLanguage;
-    public long organization;
+    public Long organization;
     public String sessionToken;
-
+    public String organizationCode;
+    public String path="";
+    public Integer phone;
+    public Integer tenant;
+    public String pathRoot="";
     public User() {
     }
 

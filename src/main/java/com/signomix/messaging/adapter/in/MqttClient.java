@@ -31,5 +31,11 @@ public class MqttClient {
         String msg = new String(bytes);
         userLogic.processUserEvent(msg);
     }
+
+    @Incoming("data-created")
+    public void processDataCreated(byte[] bytes) {
+        logger.info("Data created event received: "+new String(bytes));
+        mqttLogic.processDataCreated(bytes);
+    }
     
 }

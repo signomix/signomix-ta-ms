@@ -17,4 +17,5 @@ public interface MessageProcessorPort {
     public void setAuthHost(String authHost);
     public void setDao(IotDatabaseIface dao);
     public void setMailingRepository(MailingActionRepository repo);
+    public void processDataCreated(byte[] bytes);
 }

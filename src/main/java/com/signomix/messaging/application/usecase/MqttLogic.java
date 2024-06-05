@@ -61,4 +61,8 @@ public class MqttLogic {
         messageAdapter.processNotification(bytes);
     }
 
+    public void processDataCreated(byte[] bytes) {
+        messageAdapter.processDataCreated(bytes);
+    }
+
 }

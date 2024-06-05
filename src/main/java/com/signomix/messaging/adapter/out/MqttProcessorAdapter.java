@@ -352,6 +352,34 @@ public class MqttProcessorAdapter implements MessageProcessorPort {
         mailerService.sendEmail(user.email, subject, content);
     }
 
+    @Override
+    public void processDataCreated(byte[] bytes){
+        String message = new String(bytes, StandardCharsets.UTF_8);
+        LOG.debug("DATA_CREATED2: " + message);
+/*         MessageEnvelope wrapper;
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            wrapper = objectMapper.readValue(message, MessageEnvelope.class);
+        } catch (JsonProcessingException ex) {
+            LOG.error(ex.getMessage());
+            return;
+        }
+        LOG.debug(wrapper.type + " " + wrapper.uuid + " " + wrapper.message);
+        switch (wrapper.type) {
+           case "WELCOME_EMAIL":
+                processWelcomeEmail(wrapper);
+                break;
+            case "DIRECT_EMAIL":
+                processDirectEmail(wrapper);
+                break;
+            case "MAILING":
+                processMailing(wrapper);
+                break; 
+            default:
+                LOG.warn("Unsupported message type " + wrapper.type);
+        } */
+    }
+
     private User getUser(String uid) {
         User user = null;
         LOG.info("getUser " + uid);

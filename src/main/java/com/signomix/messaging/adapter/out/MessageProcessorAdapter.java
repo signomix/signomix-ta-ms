@@ -535,4 +535,10 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
         this.dao = dao;
     }
 
+    @Override
+    public void processDataCreated(byte[] bytes) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'processDataCreated'");
+    }
+
 }
