@@ -6,6 +6,7 @@ import org.eclipse.microprofile.reactive.messaging.Incoming;
 import org.jboss.logging.Logger;
 
 import com.signomix.messaging.application.usecase.MqttLogic;
+import com.signomix.messaging.domain.order.OrderLogic;
 import com.signomix.messaging.domain.user.UserLogic;
 
 public class MqttClient {
@@ -18,6 +19,9 @@ public class MqttClient {
 
     @Inject
     UserLogic userLogic;
+    
+    @Inject
+    OrderLogic orderLogic;
 
     @Incoming("alerts")
     public void processNotification(byte[] bytes) {
@@ -36,6 +40,13 @@ public class MqttClient {
     public void processDataCreated(byte[] bytes) {
         logger.info("Data created event received: "+new String(bytes));
         mqttLogic.processDataCreated(bytes);
+    }
+
+    @Incoming("order")
+    public void processOrderEvent(byte[] bytes) {
+        logger.info("Order event received: "+new String(bytes));
+        String msg = new String(bytes);
+        orderLogic.processOrderEvent(msg);
     }
     
 }

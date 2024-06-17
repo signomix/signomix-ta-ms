@@ -44,8 +44,10 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
     protected MailerService mailerService;
     IotDatabaseIface dao;
 
-/*     String appKey;
-    String authHost; */
+    /*
+     * String appKey;
+     * String authHost;
+     */
 
     @Inject
     AuthUC authUC;
@@ -116,6 +118,19 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
         LOG.debug(wrapper.type + " " + wrapper.uuid + " " + wrapper.payload);
     }
 
+    public void processAdminEmail(MessageEnvelope wrapper) {
+        String emailAddress = wrapper.user.email;
+        if (null == emailAddress || emailAddress.isEmpty()) {
+            emailAddress = adminEmail;
+            LOG.warn("email not set, usinng admin email from application properties");
+            if (null == emailAddress || emailAddress.isEmpty()) {
+                LOG.error("application property signomix.admin.email not set");
+                return;
+            }
+        }
+        mailerService.sendEmail(emailAddress, wrapper.subject, wrapper.message);
+    }
+    
     @Override
     public void processAdminEmail(byte[] bytes) {
         String message = new String(bytes, StandardCharsets.UTF_8);
@@ -161,72 +176,81 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
                 processWelcomeEmail(wrapper);
                 return;
             }
-            String address = null;
-            String messageChannel = null;
-            User user = getUser(wrapper.user);
-            Device device = getDevice(wrapper.eui);
-            if (sendDeviceDefined(device, wrapper)) {
-                return;
-            }
-            String[] channelConfig = user.getChannelConfig(wrapper.type);
-            if (channelConfig == null || channelConfig.length < 2) {
-                LOG.debug("Channel not configured " + wrapper.type + " " + channelConfig.length);
-            } else {
-                LOG.debug(channelConfig[0] + " " + channelConfig[1]);
-                messageChannel = channelConfig[0];
-                if (channelConfig.length == 2) {
-                    address = channelConfig[1];
-                } else {
-                    // in case when address has ':'
-                    address = "";
-                    for (int i = 1; i < channelConfig.length - 1; i++) {
-                        address = address + channelConfig[i] + ":";
-                    }
-                    address = address + channelConfig[channelConfig.length - 1];
-                }
 
-                if (null != address && !address.isEmpty()) {
-                    switch (messageChannel.toUpperCase()) {
-                        case "SMTP":
-                            if (null == wrapper.subject || wrapper.subject.isEmpty()) {
-                                mailerService.sendEmail(address, wrapper.eui, wrapper.message);
-                            } else {
-                                mailerService.sendEmail(address, wrapper.subject, wrapper.message);
-                            }
-                            break;
-                        case "WEBHOOK":
-                            new WebhookService().send(address,
-                                    new Message(wrapper.eui, wrapper.message, wrapper.subject));
-                            break;
-                        case "SMS":
-                            if (user.credits > 0) {
-                                // SmsplanetService smsService = new SmsplanetService();
-                                // smsService.send(user, address, new Message(wrapper.eui, wrapper.message));
-                                LOG.debug("SMSPLANET: " + " SIGNOMIX " + user.phonePrefix + address + " test "
-                                        + wrapper.message);
-                                SmsPlanetResponse response = smsplanetClient.sendSms(
-                                        smsKey,
-                                        smsPassword,
-                                        "SIGNOMIX",
-                                        user.phonePrefix + address,
-                                        wrapper.type,
-                                        wrapper.type + ": " + wrapper.message);
-                                LOG.debug("SMSPLANET RESPONSE: " + response.messageId + " " + response.errorCode + " "
-                                        + response.errorMsg);
-                            } else {
-                                // TODO: error
-                                LOG.debug(messageChannel + " not sent, no credits");
-                            }
-                            break;
+            // oterwise
+            processNotification(wrapper);
 
-                        default:
-                            LOG.warnf("Unsupported message type %1s", wrapper.type);
-                    }
-                }
-            }
         } catch (Exception e) {
             LOG.error(e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    private void processNotification(MessageEnvelope wrapper) {
+        String address = null;
+        String messageChannel = null;
+        User user = getUser(wrapper.user);
+        Device device = getDevice(wrapper.eui);
+
+        if (sendDeviceDefined(device, wrapper)) {
+            // sendDeviceDefined(device, wrapper) is not implemented yet
+            return;
+        }
+        String[] channelConfig = user.getChannelConfig(wrapper.type);
+        if (channelConfig == null || channelConfig.length < 2) {
+            LOG.debug("Channel not configured " + wrapper.type + " " + channelConfig.length);
+        } else {
+            LOG.debug(channelConfig[0] + " " + channelConfig[1]);
+            messageChannel = channelConfig[0];
+            if (channelConfig.length == 2) {
+                address = channelConfig[1];
+            } else {
+                // in case when address has ':'
+                address = "";
+                for (int i = 1; i < channelConfig.length - 1; i++) {
+                    address = address + channelConfig[i] + ":";
+                }
+                address = address + channelConfig[channelConfig.length - 1];
+            }
+
+            if (null != address && !address.isEmpty()) {
+                switch (messageChannel.toUpperCase()) {
+                    case "SMTP":
+                        if (null == wrapper.subject || wrapper.subject.isEmpty()) {
+                            mailerService.sendEmail(address, wrapper.eui, wrapper.message);
+                        } else {
+                            mailerService.sendEmail(address, wrapper.subject, wrapper.message);
+                        }
+                        break;
+                    case "WEBHOOK":
+                        new WebhookService().send(address,
+                                new Message(wrapper.eui, wrapper.message, wrapper.subject));
+                        break;
+                    case "SMS":
+                        if (user.credits > 0) {
+                            // SmsplanetService smsService = new SmsplanetService();
+                            // smsService.send(user, address, new Message(wrapper.eui, wrapper.message));
+                            LOG.debug("SMSPLANET: " + " SIGNOMIX " + user.phonePrefix + address + " test "
+                                    + wrapper.message);
+                            SmsPlanetResponse response = smsplanetClient.sendSms(
+                                    smsKey,
+                                    smsPassword,
+                                    "SIGNOMIX",
+                                    user.phonePrefix + address,
+                                    wrapper.type,
+                                    wrapper.type + ": " + wrapper.message);
+                            LOG.debug("SMSPLANET RESPONSE: " + response.messageId + " " + response.errorCode + " "
+                                    + response.errorMsg);
+                        } else {
+                            // TODO: error
+                            LOG.debug(messageChannel + " not sent, no credits");
+                        }
+                        break;
+
+                    default:
+                        LOG.warnf("Unsupported message type %1s", wrapper.type);
+                }
+            }
         }
     }
 
@@ -333,7 +357,6 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
                 doc.setContent("Test content");
                 break;
         }
-
 
         return doc;
     }
@@ -521,13 +544,13 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
 
     @Override
     public void setApplicationKey(String key) {
-        //this.appKey = key;
+        // this.appKey = key;
 
     }
 
     @Override
     public void setAuthHost(String authHost) {
-        //this.authHost = authHost;
+        // this.authHost = authHost;
     }
 
     @Override
