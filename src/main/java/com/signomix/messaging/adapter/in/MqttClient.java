@@ -1,5 +1,6 @@
 package com.signomix.messaging.adapter.in;
 
+import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
 import org.eclipse.microprofile.reactive.messaging.Incoming;
@@ -9,6 +10,7 @@ import com.signomix.messaging.application.usecase.MqttLogic;
 import com.signomix.messaging.domain.order.OrderLogic;
 import com.signomix.messaging.domain.user.UserLogic;
 
+@ApplicationScoped
 public class MqttClient {
 
     @Inject

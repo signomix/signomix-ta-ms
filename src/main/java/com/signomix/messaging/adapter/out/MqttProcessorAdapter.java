@@ -122,6 +122,10 @@ public class MqttProcessorAdapter implements MessageProcessorPort {
             String address = null;
             String messageChannel = null;
             User user = getUser(userId);
+            if (null == user) {
+                LOG.warn("user not found " + userId);
+                return;
+            }
             String[] channelConfig = user.getChannelConfig(messageType);
             if (channelConfig == null || channelConfig.length < 2) {
                 LOG.debug("Channel not configured " + messageType + " " + channelConfig.length);
@@ -385,7 +389,7 @@ public class MqttProcessorAdapter implements MessageProcessorPort {
         LOG.info("getUser " + uid);
         LOG.info("authUC " + authUC);
         user = authUC.getUser(uid);
-        System.out.println(user.toString());
+        //System.out.println(user.toString());
         return user;
     }
 

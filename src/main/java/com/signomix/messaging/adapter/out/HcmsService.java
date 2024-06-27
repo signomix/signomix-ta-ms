@@ -19,6 +19,7 @@ public class HcmsService {
     
 
     public Document getDocument(String path) {
+        logger.info("Getting document from HCMS: "+path);
         Document doc = client.getDocument(path);
         return doc;
     }

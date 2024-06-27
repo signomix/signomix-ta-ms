@@ -1,8 +1,6 @@
 package com.signomix.messaging.adapter.out;
 
 import java.io.UnsupportedEncodingException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
@@ -10,13 +8,10 @@ import java.util.List;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
-import javax.ws.rs.ProcessingException;
-import javax.ws.rs.WebApplicationException;
 
 import org.cricketmsf.microsite.cms.Document;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.eclipse.microprofile.rest.client.RestClientBuilder;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
 
@@ -27,7 +22,6 @@ import com.signomix.common.MessageEnvelope;
 import com.signomix.common.User;
 import com.signomix.common.db.IotDatabaseIface;
 import com.signomix.common.iot.Device;
-import com.signomix.messaging.application.port.out.ContentServiceClient;
 import com.signomix.messaging.application.port.out.MessageProcessorPort;
 import com.signomix.messaging.application.usecase.AuthUC;
 import com.signomix.messaging.application.usecase.DeviceUC;
@@ -130,7 +124,7 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
         }
         mailerService.sendEmail(emailAddress, wrapper.subject, wrapper.message);
     }
-    
+
     @Override
     public void processAdminEmail(byte[] bytes) {
         String message = new String(bytes, StandardCharsets.UTF_8);

@@ -1,6 +1,10 @@
 package com.signomix.messaging.domain.user;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
@@ -163,10 +167,14 @@ public class UserLogic {
         }
         String message = doc.content;
         HashMap<String,String> valueMap = new HashMap<>();
-        valueMap.put("API_URL", apiUrl);
-        valueMap.put("WEBAPP_URL", webappUrl);
+        valueMap.put("$API_URL$", apiUrl);
+        valueMap.put("$WEBAPP_URL$", webappUrl);
+        valueMap.put("$USER_NAME$", user.name);
+        valueMap.put("$USER_SURNAME$", user.surname);
+        valueMap.put("$USER_EMAIL$", user.email);
+        valueMap.put("$USER_SECRET$", user.confirmString);
 
-        message = replacePlaceholders(message, user, valueMap);
+        message = replacePlaceholders(message, valueMap);
         String subject = doc.metadata.get("subject");
 
         /*
@@ -227,10 +235,14 @@ public class UserLogic {
         }
         String message = doc.content;
         HashMap<String,String> valueMap = new HashMap<>();
-        valueMap.put("API_URL", apiUrl);
-        valueMap.put("WEBAPP_URL", webappUrl);
+        valueMap.put("$API_URL$", apiUrl);
+        valueMap.put("$WEBAPP_URL$", webappUrl);
+        valueMap.put("$USER_NAME$", user.name);
+        valueMap.put("$USER_SURNAME$", user.surname);
+        valueMap.put("$USER_EMAIL$", user.email);
+        valueMap.put("$USER_SECRET$", user.confirmString);
 
-        message = replacePlaceholders(message, user, valueMap);
+        message = replacePlaceholders(message, valueMap);
         String subject = doc.metadata.get("subject");
 /*         String subject_en = "Signomix Password Reset";
         String subject_pl = "Reset hasła w Signomix";
@@ -303,10 +315,14 @@ public class UserLogic {
         }
         String message = doc.content;
         HashMap<String,String> valueMap = new HashMap<>();
-        valueMap.put("API_URL", apiUrl);
-        valueMap.put("WEBAPP_URL", webappUrl);
+        valueMap.put("$API_URL$", apiUrl);
+        valueMap.put("$WEBAPP_URL$", webappUrl);
+        valueMap.put("$USER_NAME$", user.name);
+        valueMap.put("$USER_SURNAME$", user.surname);
+        valueMap.put("$USER_EMAIL$", user.email);
+        valueMap.put("$USER_SECRET$", user.confirmString);
 
-        message = replacePlaceholders(message, user, valueMap);
+        message = replacePlaceholders(message, valueMap);
         String subject = doc.metadata.get("subject");
         MessageEnvelope envelope = new MessageEnvelope();
         envelope.message = message;
@@ -375,10 +391,14 @@ public class UserLogic {
         }
         String message = doc.content;
         HashMap<String,String> valueMap = new HashMap<>();
-        valueMap.put("API_URL", apiUrl);
-        valueMap.put("WEBAPP_URL", webappUrl);
+        valueMap.put("$API_URL$", apiUrl);
+        valueMap.put("$WEBAPP_URL$", webappUrl);
+        valueMap.put("$USER_NAME$", user.name);
+        valueMap.put("$USER_SURNAME$", user.surname);
+        valueMap.put("$USER_EMAIL$", user.email);
+        valueMap.put("$USER_SECRET$", user.confirmString);
 
-        message = replacePlaceholders(message, user, valueMap);
+        message = replacePlaceholders(message, valueMap);
         String subject = doc.metadata.get("subject");
 
         MessageEnvelope envelope = new MessageEnvelope();
@@ -416,10 +436,15 @@ public class UserLogic {
         }
         String message = doc.content;
         HashMap<String,String> valueMap = new HashMap<>();
-        valueMap.put("API_URL", apiUrl);
-        valueMap.put("WEBAPP_URL", webappUrl);
+        valueMap.put("$API_URL$", apiUrl);
+        valueMap.put("$WEBAPP_URL$", webappUrl);
+        valueMap.put("$USER_NAME$", user.name);
+        valueMap.put("$USER_SURNAME$", user.surname);
+        valueMap.put("$USER_EMAIL$", user.email);
+        valueMap.put("$USER_SECRET$", user.confirmString);
 
-        message = replacePlaceholders(message, user, valueMap);
+
+        message = replacePlaceholders(message, valueMap);
         String subject = doc.metadata.get("subject");
 
         MessageEnvelope envelope = new MessageEnvelope();
@@ -436,28 +461,35 @@ public class UserLogic {
      * @return list of words
      */
     public static String[] findPlaceholders(String text) {
-        return text.split("\\{[^\\}]*\\}");
+        Pattern pattern = Pattern.compile("\\$[^$]*\\$");
+        Matcher matcher = pattern.matcher(text);
+        List<String> results = new ArrayList<>();
+        while (matcher.find()) {
+            results.add(matcher.group());
+        }
+        return results.toArray(new String[0]);
     }
 
     /**
      * Replaces placeholders in the text with values and User fields.
      * 
      * @param text
-     * @param user
      * @param valueMap
      * @return
      */
-    public static String replacePlaceholders(String text, User user, HashMap<String,String> valueMap) {
+    private String replacePlaceholders(String text, HashMap<String, String> valueMap) {
         String result = text;
         String[] placeholders = findPlaceholders(text);
-        result = result.replace("{USER_NAME}", user.name);
-        result = result.replace("{USER_SURNAME}", user.surname);
-        result = result.replace("{USER_EMAIL}", user.email);
-        result = result.replace("{USER_SECRET}", user.confirmString);
-        for(int i=0;i<placeholders.length;i++) {
-            String key = placeholders[i].substring(1,placeholders[i].length()-1);
-            if(valueMap.containsKey(key)) {
-                result = result.replace("{"+key+"}", valueMap.get(key));
+        String key;
+        for (int i = 0; i < placeholders.length; i++) {
+            logger.info("Placeholder: [" + placeholders[i] + "]");
+            try {
+                key = placeholders[i];
+                if (valueMap.containsKey(key)) {
+                    result = result.replace(key, valueMap.get(key));
+                }
+            } catch (Exception e) {
+                logger.warn(e.getMessage());
             }
         }
         return result;
