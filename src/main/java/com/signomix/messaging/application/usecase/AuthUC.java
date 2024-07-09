@@ -43,9 +43,12 @@ public class AuthUC {
     AuthDaoIface dao;
     UserDaoIface userDao;
 
+    @ConfigProperty(name = "questdb.client.config")
+    String questDbConfig;
+
     void onStart(@Observes StartupEvent ev) {   
         dao=new AuthDao();
-        dao.setDatasource(dataSource);
+        dao.setDatasource(dataSource, questDbConfig);
         userDao = new UserDao();
         userDao.setDatasource(userDataSource);
     }
