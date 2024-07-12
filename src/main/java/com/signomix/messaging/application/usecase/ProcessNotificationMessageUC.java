@@ -22,7 +22,7 @@ public class ProcessNotificationMessageUC {
     private static final Logger LOG = Logger.getLogger(ProcessNotificationMessageUC.class);
 
     @Inject
-    @DataSource("iot")
+    @DataSource("oltp")
     AgroalDataSource ds;
 
     IotDatabaseIface dao;

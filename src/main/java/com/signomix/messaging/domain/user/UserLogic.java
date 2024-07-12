@@ -19,9 +19,9 @@ import com.signomix.common.db.AuthDaoIface;
 import com.signomix.common.db.IotDatabaseException;
 import com.signomix.common.db.UserDao;
 import com.signomix.common.db.UserDaoIface;
+import com.signomix.common.hcms.Document;
 import com.signomix.messaging.adapter.out.HcmsService;
 import com.signomix.messaging.adapter.out.MessageProcessorAdapter;
-import com.signomix.messaging.domain.Document;
 
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.agroal.DataSource;

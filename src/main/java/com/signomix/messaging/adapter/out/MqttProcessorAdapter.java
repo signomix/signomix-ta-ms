@@ -21,11 +21,11 @@ import com.signomix.common.EventEnvelope;
 import com.signomix.common.MessageEnvelope;
 import com.signomix.common.User;
 import com.signomix.common.db.IotDatabaseIface;
+import com.signomix.common.hcms.Document;
 import com.signomix.common.iot.Device;
 import com.signomix.messaging.application.port.out.MessageProcessorPort;
 import com.signomix.messaging.application.usecase.AuthUC;
 import com.signomix.messaging.application.usecase.DeviceUC;
-import com.signomix.messaging.domain.Document;
 import com.signomix.messaging.domain.MailingAction;
 import com.signomix.messaging.domain.Message;
 import com.signomix.messaging.domain.Status;
@@ -101,7 +101,7 @@ public class MqttProcessorAdapter implements MessageProcessorPort {
                 return;
             }
         }
-        mailerService.sendEmail(emailAddress, wrapper.subject, wrapper.message);
+        mailerService.sendEmail(emailAddress, wrapper.subject, wrapper.message, null);
     }
 
     @Override
@@ -150,7 +150,7 @@ public class MqttProcessorAdapter implements MessageProcessorPort {
                             if (null == messageSubject || messageSubject.isEmpty()) {
                                 messageSubject = "Signomix notification";
                             }
-                            mailerService.sendEmail(address, messageSubject, messageText);
+                            mailerService.sendEmail(address, messageSubject, messageText, null);
                             break;
                         case "WEBHOOK":
                             LOG.info("sending with WEBHOOK");
@@ -246,7 +246,7 @@ public class MqttProcessorAdapter implements MessageProcessorPort {
                     }
                     break;
             }
-            mailerService.sendHtmlEmail(user.email, subject, content);
+            mailerService.sendHtmlEmail(user.email, subject, content, null);
         }
         action.setFinishedAt(new Date());
         action.setStatus(Status.Finished);
@@ -298,7 +298,7 @@ public class MqttProcessorAdapter implements MessageProcessorPort {
 
     private void processDirectEmail(MessageEnvelope wrapper) {
         LOG.debug("DIRECT_EMAIL");
-        mailerService.sendEmail(wrapper.user.email, wrapper.subject, wrapper.message);
+        mailerService.sendEmail(wrapper.user.email, wrapper.subject, wrapper.message, null);
     }
 
     private void processWelcomeEmail(MessageEnvelope wrapper) {
@@ -334,7 +334,7 @@ public class MqttProcessorAdapter implements MessageProcessorPort {
                     content = content.replaceFirst("\\$user.name", user.name);
                     content = content.replaceFirst("\\$mailing.name", user.surname);
                     content = content.replaceFirst("\\$user.uid", user.uid);
-                    mailerService.sendEmail(user.email, subject, content);
+                    mailerService.sendEmail(user.email, subject, content, null);
                     break;
                 // case "EN":
                 default:
@@ -346,14 +346,14 @@ public class MqttProcessorAdapter implements MessageProcessorPort {
                     content = content.replaceFirst("\\$user.name", user.name);
                     content = content.replaceFirst("\\$mailing.name", user.surname);
                     content = content.replaceFirst("\\$user.uid", user.uid);
-                    mailerService.sendEmail(user.email, subject, content);
+                    mailerService.sendEmail(user.email, subject, content, null);
                     break;
             }
 /*         } catch (UnsupportedEncodingException ex) {
             LOG.error(ex.getMessage());
             return;
         } */
-        mailerService.sendEmail(user.email, subject, content);
+        mailerService.sendEmail(user.email, subject, content, null);
     }
 
     @Override

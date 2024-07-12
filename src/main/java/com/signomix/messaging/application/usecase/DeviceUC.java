@@ -23,7 +23,7 @@ public class DeviceUC {
     Logger LOG;
 
     @Inject
-    @DataSource("iot")
+    @DataSource("oltp")
     AgroalDataSource dataSource;
 
     IotDatabaseIface dao;

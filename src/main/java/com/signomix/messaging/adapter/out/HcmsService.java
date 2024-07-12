@@ -6,7 +6,8 @@ import javax.inject.Inject;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
 
-import com.signomix.messaging.domain.Document;
+import com.signomix.common.hcms.Document;
+
 
 @ApplicationScoped
 public class HcmsService {

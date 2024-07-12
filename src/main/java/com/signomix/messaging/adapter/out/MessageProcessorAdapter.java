@@ -122,7 +122,7 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
                 return;
             }
         }
-        mailerService.sendEmail(emailAddress, wrapper.subject, wrapper.message);
+        mailerService.sendEmail(emailAddress, wrapper.subject, wrapper.message, null);
     }
 
     @Override
@@ -146,7 +146,7 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
                 return;
             }
         }
-        mailerService.sendEmail(emailAddress, wrapper.subject, wrapper.message);
+        mailerService.sendEmail(emailAddress, wrapper.subject, wrapper.message, null);
     }
 
     @Override
@@ -211,9 +211,9 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
                 switch (messageChannel.toUpperCase()) {
                     case "SMTP":
                         if (null == wrapper.subject || wrapper.subject.isEmpty()) {
-                            mailerService.sendEmail(address, wrapper.eui, wrapper.message);
+                            mailerService.sendEmail(address, wrapper.eui, wrapper.message, null);
                         } else {
-                            mailerService.sendEmail(address, wrapper.subject, wrapper.message);
+                            mailerService.sendEmail(address, wrapper.subject, wrapper.message, null);
                         }
                         break;
                     case "WEBHOOK":
@@ -315,7 +315,7 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
                     }
                     break;
             }
-            mailerService.sendHtmlEmail(user.email, subject, content);
+            mailerService.sendHtmlEmail(user.email, subject, content, null);
         }
         action.setFinishedAt(new Date());
         action.setStatus(Status.Finished);
@@ -365,7 +365,7 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
 
     public void processDirectEmail(MessageEnvelope wrapper) {
         LOG.debug("DIRECT_EMAIL");
-        mailerService.sendEmail(wrapper.user.email, wrapper.subject, wrapper.message);
+        mailerService.sendEmail(wrapper.user.email, wrapper.subject, wrapper.message,   null);
     }
 
     private void processWelcomeEmail(MessageEnvelope wrapper) {
@@ -421,7 +421,7 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
                     content = content.replaceFirst("\\$user.name", user.name);
                     content = content.replaceFirst("\\$user.surname", user.surname);
                     content = content.replaceFirst("\\$user.uid", user.uid);
-                    mailerService.sendEmail(user.email, subject, content);
+                    mailerService.sendEmail(user.email, subject, content, null);
                     break;
                 // case "EN":
                 default:
@@ -431,14 +431,14 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
                     content = content.replaceFirst("\\$user.name", user.name);
                     content = content.replaceFirst("\\$user.surname", user.surname);
                     content = content.replaceFirst("\\$user.uid", user.uid);
-                    mailerService.sendEmail(user.email, subject, content);
+                    mailerService.sendEmail(user.email, subject, content,   null);
                     break;
             }
         } catch (UnsupportedEncodingException ex) {
             LOG.error(ex.getMessage());
             return;
         }
-        mailerService.sendEmail(user.email, subject, content);
+        mailerService.sendEmail(user.email, subject, content, null);
     }
 
     /*

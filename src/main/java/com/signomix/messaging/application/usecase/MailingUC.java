@@ -31,7 +31,7 @@ public class MailingUC {
     private static final Logger LOG = Logger.getLogger(MqttLogic.class);
 
     @Inject
-    @DataSource("iot")
+    @DataSource("oltp")
     AgroalDataSource dataSource;
 
     IotDatabaseIface dao;

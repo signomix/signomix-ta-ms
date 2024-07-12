@@ -2,6 +2,7 @@ package com.signomix.messaging.adapter.out;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -27,14 +28,14 @@ public class MailerService implements NotificationIface {
     }
 
     @Override
-    public String sendEmail(String toAddress, String subject, String body) {
+    public String sendEmail(String toAddress, String subject, String body, List<String> bcc) {
         LOG.debug("sendEmail1: " + toAddress + " " + subject);
         new Thread(() -> sendInThread(toAddress, subject, body)).start();
         return "OK";
     }
 
     @Override
-    public String sendHtmlEmail(String toAddress, String subject, String body) {
+    public String sendHtmlEmail(String toAddress, String subject, String body, List<String> bcc) {
         try {
             LOG.debug("sendEmail3: " + toAddress + " " + subject);
             String[] r = toAddress.split(",");
@@ -42,6 +43,9 @@ public class MailerService implements NotificationIface {
             Mail mail = Mail.withHtml(recipients.get(0).trim(), subject, body);
             for (int i = 1; i < recipients.size(); i++) {
                 mail = mail.addTo(recipients.get(i).trim());
+            }
+            if(bcc != null){
+                mail = mail.setBcc(bcc);
             }
             mailer.send(mail);
         } catch (Exception ex) {

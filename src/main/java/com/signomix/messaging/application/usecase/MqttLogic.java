@@ -23,7 +23,7 @@ public class MqttLogic {
     private static final Logger LOG = Logger.getLogger(MailingUC.class);
 
     @Inject
-    @DataSource("iot")
+    @DataSource("oltp")
     AgroalDataSource dataSource;
 
     IotDatabaseIface dao;
