@@ -1,6 +1,5 @@
 package com.signomix.messaging.domain.news;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -16,7 +15,6 @@ import org.jboss.logging.Logger;
 import com.signomix.common.User;
 import com.signomix.common.db.IotDatabaseException;
 import com.signomix.common.db.NewsDaoIface;
-import com.signomix.common.db.UserDao;
 import com.signomix.common.db.UserDaoIface;
 import com.signomix.common.hcms.Document;
 import com.signomix.common.news.NewsDefinition;
@@ -59,7 +57,7 @@ public class NewsSender {
     String defaultLanguage;
 
     void onStart(@Observes StartupEvent ev) {
-        userDao = new UserDao();
+        userDao = new com.signomix.common.tsdb.UserDao();
         userDao.setDatasource(userDataSource);
         newsDao = new com.signomix.common.tsdb.NewsDao();
         newsDao.setDatasource(tsDataSource);
@@ -69,6 +67,15 @@ public class NewsSender {
         // send news
         if (user.type != User.OWNER) {
             logger.warn("User is not owner, news not sent");
+            return;
+        }
+        if(news.name == null || news.name.isEmpty()){
+            logger.warn("News name is empty, news not sent");
+            return;
+        }
+        if(news.type == null){
+            logger.warn("News type is empty, news not sent");
+            return;
         }
         HashMap<String, Document> documents = new HashMap<>();
         for (String key : news.documents.keySet()) {
@@ -193,7 +200,7 @@ public class NewsSender {
             return;
         }
 
-        if (users.isEmpty()) {
+        if (users==null || users.isEmpty()) {
             if (targetGroup == null || targetGroup.isEmpty()) {
                 logger.warn("No users found");
             } else {
