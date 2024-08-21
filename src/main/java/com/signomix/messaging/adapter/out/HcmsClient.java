@@ -20,6 +20,6 @@ public interface HcmsClient {
      * @return
      */
     @GET
-    public Document getDocument(@QueryParam("path") String path);
+    public Document getDocument(@QueryParam("name") String path);
 
 }
