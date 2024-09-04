@@ -69,11 +69,11 @@ public class NewsSender {
             logger.warn("User is not owner, news not sent");
             return;
         }
-        if(news.name == null || news.name.isEmpty()){
+        if (news.name == null || news.name.isEmpty()) {
             logger.warn("News name is empty, news not sent");
             return;
         }
-        if(news.type == null){
+        if (news.type == null) {
             logger.warn("News type is empty, news not sent");
             return;
         }
@@ -191,7 +191,7 @@ public class NewsSender {
         List<User> users = new ArrayList<>();
         try {
             if (targetGroup == null || targetGroup.isEmpty() || targetGroup.equals("*")) {
-                users = userDao.getUsers(null, null);
+                users = userDao.getUsers(10000,0, null, null);
             } else {
                 users = userDao.getUsersByRole(targetGroup);
             }
@@ -200,7 +200,7 @@ public class NewsSender {
             return;
         }
 
-        if (users==null || users.isEmpty()) {
+        if (users == null || users.isEmpty()) {
             if (targetGroup == null || targetGroup.isEmpty()) {
                 logger.warn("No users found");
             } else {
@@ -226,17 +226,30 @@ public class NewsSender {
             }
             logger.info("subject: " + subject);
             logger.info("content: " + doc.content);
+            int maxCounter = 50;
+            int counter = 0;
             List<String> emails = new ArrayList<>();
             for (User user : users) {
-                if(user.preferredLanguage.equals(language)){
+                if(user.email==null || user.email.isEmpty()){
+                    continue;
+                }
+                if (user.preferredLanguage.equals(language)) {
                     saveNewsEnvelope(user, newsId, language);
-                    emails.add(user.email);
-                }else if(language.equals(defaultLanguage) && !languages.contains(user.preferredLanguage)){
+                    emails.add(user.email.trim());
+                } else if (language.equals(defaultLanguage) && !languages.contains(user.preferredLanguage)) {
                     saveNewsEnvelope(user, newsId, language);
-                    emails.add(user.email);
+                    emails.add(user.email.trim());
+                }
+                counter++;
+                if (counter > maxCounter) {
+                    mailerService.sendHtmlEmail(adminEmail, subject, doc.content, emails);
+                    emails.clear();
+                    counter = 0;
                 }
             }
-            mailerService.sendHtmlEmail(adminEmail, subject, doc.content, emails);
+            if (!emails.isEmpty()) {
+                mailerService.sendHtmlEmail(adminEmail, subject, doc.content, emails);
+            }
         }
 
     }
