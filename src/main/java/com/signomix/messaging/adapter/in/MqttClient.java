@@ -1,14 +1,12 @@
 package com.signomix.messaging.adapter.in;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-
-import org.eclipse.microprofile.reactive.messaging.Incoming;
-import org.jboss.logging.Logger;
-
 import com.signomix.messaging.application.usecase.MqttLogic;
 import com.signomix.messaging.domain.order.OrderLogic;
 import com.signomix.messaging.domain.user.UserLogic;
+import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
+import org.eclipse.microprofile.reactive.messaging.Incoming;
+import org.jboss.logging.Logger;
 
 @ApplicationScoped
 public class MqttClient {
@@ -21,34 +19,51 @@ public class MqttClient {
 
     @Inject
     UserLogic userLogic;
-    
+
     @Inject
     OrderLogic orderLogic;
 
     @Incoming("alerts")
     public void processNotification(byte[] bytes) {
-        logger.info("Alert received: "+new String(bytes));
-        mqttLogic.processMqttAlerts(bytes);
+        try {
+            logger.info("Alert received: " + new String(bytes));
+            mqttLogic.processMqttAlerts(bytes);
+        } catch (Exception e) {
+            logger.error("Error processing alert: " + e.getMessage());
+        }
     }
 
-    @Incoming("user")
+    @Incoming("user-events")
     public void processUserEvent(byte[] bytes) {
-        logger.info("User event received: "+new String(bytes));
-        String msg = new String(bytes);
-        userLogic.processUserEvent(msg);
+        try {
+            logger.info("User event received");
+            logger.info("User event received: " + new String(bytes));
+            String msg = new String(bytes);
+            userLogic.processUserEvent(msg);
+        } catch (Exception e) {
+            logger.error("Error processing user event: " + e.getMessage());
+        }
     }
 
     @Incoming("data-created")
     public void processDataCreated(byte[] bytes) {
-        logger.info("Data created event received: "+new String(bytes));
-        mqttLogic.processDataCreated(bytes);
+        try {
+            logger.info("Data created event received: " + new String(bytes));
+            mqttLogic.processDataCreated(bytes);
+        } catch (Exception e) {
+            logger.error("Error processing data created event: " + e.getMessage());
+        }
     }
 
     @Incoming("order")
     public void processOrderEvent(byte[] bytes) {
-        logger.info("Order event received: "+new String(bytes));
-        String msg = new String(bytes);
-        orderLogic.processOrderEvent(msg);
+        try {
+            logger.info("Order event received: " + new String(bytes));
+            String msg = new String(bytes);
+            orderLogic.processOrderEvent(msg);
+        } catch (Exception e) {
+            logger.error("Error processing order event: " + e.getMessage());
+        }
     }
-    
+
 }

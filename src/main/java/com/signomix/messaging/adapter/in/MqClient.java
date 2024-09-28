@@ -1,51 +1,61 @@
 package com.signomix.messaging.adapter.in;
 
+import com.signomix.messaging.application.usecase.ProcessNotificationMessageUC;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
-
 import org.eclipse.microprofile.reactive.messaging.Incoming;
 import org.jboss.logging.Logger;
-
-import com.signomix.messaging.application.usecase.MqttLogic;
-import com.signomix.messaging.application.usecase.ProcessNotificationMessageUC;
 
 @ApplicationScoped
 public class MqClient {
 
     private static final Logger LOG = Logger.getLogger(MqClient.class);
 
-
-
     @Inject
     ProcessNotificationMessageUC processMessageUseCase;
 
-    /* @Incoming("mailing")
-    public void processMailing(byte[] bytes) {
-        processMessageUseCase.processMailing(bytes);
-    } */
+    /*
+     * @Incoming("mailing")
+     * public void processMailing(byte[] bytes) {
+     * processMessageUseCase.processMailing(bytes);
+     * }
+     */
 
     @Incoming("events")
     public void processEvent(byte[] bytes) {
-        processMessageUseCase.processEvent(bytes);
+        try {
+            processMessageUseCase.processEvent(bytes);
+        } catch (Exception e) {
+            LOG.error("Error processing event: " + e.getMessage());
+        }
     }
 
     @Incoming("admin_email")
     public void processAdminEmail(byte[] bytes) {
-        processMessageUseCase.processAdminEmail(bytes);
+        try {
+            processMessageUseCase.processAdminEmail(bytes);
+        } catch (Exception e) {
+            LOG.error("Error processing admin email: " + e.getMessage());
+        }
     }
 
     @Incoming("notifications")
     public void processNotification(byte[] bytes) {
-        processMessageUseCase.processNotification(bytes);
+        try {
+            processMessageUseCase.processNotification(bytes);
+        } catch (Exception e) {
+            LOG.error("Error processing notification: " + e.getMessage());
+        }
     }
 
     @Incoming("events_db")
     public void processDbEvent(byte[] bytes) {
-        
+
     }
+
     @Incoming("events_device")
     public void processDeviceEvent(byte[] bytes) {
-        
+
     }
 
 }
