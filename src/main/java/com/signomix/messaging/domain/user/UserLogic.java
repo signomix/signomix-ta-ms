@@ -1,18 +1,5 @@
 package com.signomix.messaging.domain.user;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.Observes;
-import javax.inject.Inject;
-
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
-
 import com.signomix.common.MessageEnvelope;
 import com.signomix.common.User;
 import com.signomix.common.db.AuthDaoIface;
@@ -22,10 +9,19 @@ import com.signomix.common.db.UserDaoIface;
 import com.signomix.common.hcms.Document;
 import com.signomix.messaging.adapter.out.HcmsService;
 import com.signomix.messaging.adapter.out.MessageProcessorAdapter;
-
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.agroal.DataSource;
 import io.quarkus.runtime.StartupEvent;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.event.Observes;
+import javax.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.logging.Logger;
 
 @ApplicationScoped
 public class UserLogic {
@@ -241,6 +237,8 @@ public class UserLogic {
         valueMap.put("$USER_SURNAME$", user.surname);
         valueMap.put("$USER_EMAIL$", user.email);
         valueMap.put("$USER_SECRET$", user.confirmString);
+        valueMap.put("$USER_LOGIN$", user.uid);
+        valueMap.put("$USER_LANGUAGE$", user.preferredLanguage);
 
         message = replacePlaceholders(message, valueMap);
         String subject = doc.metadata.get("subject");
