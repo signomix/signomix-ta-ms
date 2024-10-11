@@ -1,6 +1,7 @@
 package com.signomix.messaging.adapter.in;
 
 import com.signomix.messaging.application.usecase.MqttLogic;
+import com.signomix.messaging.domain.deviceCommands.CommandSendingLogic;
 import com.signomix.messaging.domain.order.OrderLogic;
 import com.signomix.messaging.domain.user.UserLogic;
 import javax.enterprise.context.ApplicationScoped;
@@ -22,6 +23,9 @@ public class MqttClient {
 
     @Inject
     OrderLogic orderLogic;
+
+    @Inject
+    CommandSendingLogic commandSendingLogic;
 
     @Incoming("alerts")
     public void processNotification(byte[] bytes) {
@@ -63,6 +67,16 @@ public class MqttClient {
             orderLogic.processOrderEvent(msg);
         } catch (Exception e) {
             logger.error("Error processing order event: " + e.getMessage());
+        }
+    }
+
+    @Incoming("device-commands")
+    public void processSendDeviceCommands(byte[] bytes) {
+        try {
+            logger.info("Send device commands event: " + new String(bytes));
+            commandSendingLogic.sendWaitingCommands(bytes);
+        } catch (Exception e) {
+            logger.error("Error processing device-commands event: " + e.getMessage());
         }
     }
 

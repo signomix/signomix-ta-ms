@@ -1,21 +1,17 @@
 package com.signomix.messaging.application.usecase;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.Observes;
-import javax.inject.Inject;
-
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
-
 import com.signomix.common.db.IotDatabaseDao;
 import com.signomix.common.db.IotDatabaseIface;
 import com.signomix.messaging.adapter.out.MailerService;
 import com.signomix.messaging.adapter.out.MailingActionRepository;
 import com.signomix.messaging.adapter.out.MqttProcessorAdapter;
-
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.agroal.DataSource;
 import io.quarkus.runtime.StartupEvent;
+import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.event.Observes;
+import javax.inject.Inject;
+import org.jboss.logging.Logger;
 
 
 @ApplicationScoped
