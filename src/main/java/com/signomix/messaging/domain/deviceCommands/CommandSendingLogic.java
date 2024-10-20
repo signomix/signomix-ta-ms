@@ -1,25 +1,21 @@
 package com.signomix.messaging.domain.deviceCommands;
 
-import java.util.ArrayList;
-import java.util.Base64;
-
-import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.Observes;
-import javax.inject.Inject;
-
-import org.jboss.logging.Logger;
-
-import com.signomix.common.tsdb.IotDatabaseDao;
 import com.signomix.common.db.IotDatabaseException;
 import com.signomix.common.db.IotDatabaseIface;
 import com.signomix.common.iot.Device;
+import com.signomix.common.tsdb.IotDatabaseDao;
 import com.signomix.messaging.application.port.in.ForCommandSendingIface;
 import com.signomix.messaging.domain.Message;
 import com.signomix.messaging.webhook.WebhookService;
-
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.agroal.DataSource;
 import io.quarkus.runtime.StartupEvent;
+import java.util.ArrayList;
+import java.util.Base64;
+import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.event.Observes;
+import javax.inject.Inject;
+import org.jboss.logging.Logger;
 
 @ApplicationScoped
 public class CommandSendingLogic implements ForCommandSendingIface {
@@ -77,36 +73,42 @@ public class CommandSendingLogic implements ForCommandSendingIface {
         }
         // send commands to devices
         Device device = null;
+        boolean success = false;
         for (CommandDto command : commands) {
             logger.info("Sending command to device: " + command.deviceEui);
+            success = false;
             try {
                 device = dao.getDevice(command.deviceEui, false);
                 String messageBody = encodeCommand(command.payload, command.type);
-                if (!device.getType().equalsIgnoreCase("TTN")) {
+                if (device.getType().equalsIgnoreCase("TTN")) {
+                    String deviceId = device.getDeviceID();
+                    String applicationId = device.getApplicationID();
+                    String downlinkKey = device.getDownlink();
+                    if (deviceId == null || applicationId == null || downlinkKey == null
+                            || deviceId.isEmpty() || applicationId.isEmpty() || downlinkKey.isEmpty()) {
+                        logger.warn(
+                                "Device " + command.deviceEui
+                                        + " is missing device ID, application ID or downlink key");
+                        // TODO: inform user
+                        continue;
+                    }
+                    // send command to device
+                    // only TTN community network is supported
+                    sendTtnDownlink(applicationId, deviceId, downlinkKey, messageBody);
+                    success = true;
+                } else if (device.getType().equalsIgnoreCase("CHIRPSTACK")) {
+                    logger.warn("Device " + command.deviceEui +" - downlinks to ChirpStack not supported");
+                } else {
                     logger.warn("Device " + command.deviceEui + " is not of type TTN");
-                    //TODO: commandslog table must be updated with the status and error message
+                }
+                if (success) {
                     dao.putCommandLog(command.id, command.deviceEui, command.type, command.payload, command.createdAt);
                     dao.removeCommand(command.id);
-                    continue;
+                } else {
+                    // TODO: commandslog table must be updated with the status and error message
+                    dao.putCommandLog(command.id, command.deviceEui, command.type, command.payload, command.createdAt);
+                    dao.removeCommand(command.id);
                 }
-                
-                String deviceId = device.getDeviceID();
-                String applicationId = device.getApplicationID();
-                String downlinkKey = device.getDownlink();
-                if (deviceId == null || applicationId == null || downlinkKey == null
-                        || deviceId.isEmpty() || applicationId.isEmpty() || downlinkKey.isEmpty()) {
-                    logger.warn(
-                            "Device " + command.deviceEui + " is missing device ID, application ID or downlink key");
-                    // TODO: inform user
-                    continue;
-                }
-                // send command to device
-                // only TTN community network is supported
-                if(messageBody != null && !messageBody.isEmpty()) {
-                    sendTtnDownlink(applicationId, deviceId, downlinkKey, messageBody);
-                }
-                dao.putCommandLog(command.id, command.deviceEui, command.type, command.payload, command.createdAt);
-                dao.removeCommand(command.id);
             } catch (IotDatabaseException e) {
                 logger.error("Error sending command: " + e.getMessage());
                 e.printStackTrace();
@@ -121,20 +123,20 @@ public class CommandSendingLogic implements ForCommandSendingIface {
      * 
      */
     private String encodeCommand(String payload, String type) {
-        logger.info("Encoding command: " + payload +" type "+type);
+        logger.info("Encoding command: " + payload + " type " + type);
         String encoded = null;
         if (type.equalsIgnoreCase("ACTUATOR_HEXCMD")) {
             // convert hex command to Base64
             byte[] byteArray = hexStringToByteArray(payload);
             encoded = byteArrayToBase64(byteArray);
-            //encoded = java.util.Base64.getEncoder()
-            //        .encodeToString(javax.xml.bind.DatatypeConverter.parseHexBinary(payload));
+            // encoded = java.util.Base64.getEncoder()
+            // .encodeToString(javax.xml.bind.DatatypeConverter.parseHexBinary(payload));
         } else if (type.equalsIgnoreCase("ACTUATOR_PLAINCMD")) {
             // convert plain command to Base64
-            //payload = java.util.Base64.getEncoder().encodeToString(payload.getBytes());
+            // payload = java.util.Base64.getEncoder().encodeToString(payload.getBytes());
         } else if (type.equalsIgnoreCase("ACTUATOR_CMD")) {
             // payload is a JSON string
-            //payload = java.util.Base64.getEncoder().encodeToString(payload.getBytes());
+            // payload = java.util.Base64.getEncoder().encodeToString(payload.getBytes());
         } else {
             logger.warn("Unknown command type: " + type);
         }
@@ -143,6 +145,10 @@ public class CommandSendingLogic implements ForCommandSendingIface {
     }
 
     private void sendTtnDownlink(String applicationId, String deviceId, String downlinkKey, String payload) {
+        if (payload == null || payload.isEmpty()) {
+            logger.warn("Empty message body");
+            return;
+        }
         // send command to device
         String url = "https://eu1.cloud.thethings.network/api/v3/as/applications/" + applicationId + "/devices/"
                 + deviceId + "/down/push";
@@ -164,18 +170,18 @@ public class CommandSendingLogic implements ForCommandSendingIface {
         byte[] data = new byte[len / 2];
         for (int i = 0; i < len; i += 2) {
             data[i / 2] = (byte) ((Character.digit(hexString.charAt(i), 16) << 4)
-                                 + Character.digit(hexString.charAt(i+1), 16));
+                    + Character.digit(hexString.charAt(i + 1), 16));
         }
         return data;
     }
 
     // Convert byte array to base64 string
     private String byteArrayToBase64(byte[] byteArray) {
-        String logMsg="";
+        String logMsg = "";
         for (int i = 0; i < byteArray.length; i++) {
-            logMsg=logMsg+byteArray[i] + " ";
+            logMsg = logMsg + byteArray[i] + " ";
         }
-        logger.info("byteArrayToBase64 bytes: "+logMsg);
+        logger.info("byteArrayToBase64 bytes: " + logMsg);
         return Base64.getEncoder().encodeToString(byteArray);
     }
 
