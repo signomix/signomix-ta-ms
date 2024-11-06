@@ -33,29 +33,30 @@ public class MqClient {
     @Incoming("admin_email")
     public void processAdminEmail(byte[] bytes) {
         try {
+            LOG.info("Admin email received");
             processMessageUseCase.processAdminEmail(bytes);
         } catch (Exception e) {
             LOG.error("Error processing admin email: " + e.getMessage());
         }
     }
 
-    @Incoming("notifications")
+    /* @Incoming("notifications")
     public void processNotification(byte[] bytes) {
         try {
             processMessageUseCase.processNotification(bytes);
         } catch (Exception e) {
             LOG.error("Error processing notification: " + e.getMessage());
         }
-    }
+    } */
 
-    @Incoming("events_db")
-    public void processDbEvent(byte[] bytes) {
+    // @Incoming("events_db")
+    // public void processDbEvent(byte[] bytes) {
 
-    }
+    // }
 
-    @Incoming("events_device")
-    public void processDeviceEvent(byte[] bytes) {
+    // @Incoming("events_device")
+    // public void processDeviceEvent(byte[] bytes) {
 
-    }
+    // }
 
 }

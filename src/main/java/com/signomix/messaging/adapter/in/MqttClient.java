@@ -1,6 +1,7 @@
 package com.signomix.messaging.adapter.in;
 
 import com.signomix.messaging.application.usecase.MqttLogic;
+import com.signomix.messaging.application.usecase.ProcessNotificationMessageUC;
 import com.signomix.messaging.domain.deviceCommands.CommandSendingLogic;
 import com.signomix.messaging.domain.order.OrderLogic;
 import com.signomix.messaging.domain.user.UserLogic;
@@ -27,8 +28,11 @@ public class MqttClient {
     @Inject
     CommandSendingLogic commandSendingLogic;
 
+    @Inject
+    ProcessNotificationMessageUC processMessageUseCase;
+
     @Incoming("alerts")
-    public void processNotification(byte[] bytes) {
+    public void processAlert(byte[] bytes) {
         try {
             logger.info("Alert received: " + new String(bytes));
             mqttLogic.processMqttAlerts(bytes);
@@ -77,6 +81,25 @@ public class MqttClient {
             commandSendingLogic.sendWaitingCommands(bytes);
         } catch (Exception e) {
             logger.error("Error processing device-commands event: " + e.getMessage());
+        }
+    }
+
+    @Incoming("notifications")
+    public void processNotification(byte[] bytes) {
+        try {
+            processMessageUseCase.processNotification(bytes);
+        } catch (Exception e) {
+            logger.error("Error processing notification: " + e.getMessage());
+        }
+    }
+
+    @Incoming("adminemail")
+    public void processAdminEmail(byte[] bytes) {
+        try {
+            logger.debug("Admin email received (MQTT): " + new String(bytes));
+            processMessageUseCase.processAdminEmail(bytes);
+        } catch (Exception e) {
+            logger.error("Error processing admin email: " + e.getMessage());
         }
     }
 
