@@ -7,6 +7,7 @@ import java.util.List;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import com.signomix.common.annotation.OutboundAdapter;
@@ -23,6 +24,9 @@ public class MailerService implements NotificationIface {
 
     @Inject
     Mailer mailer;
+
+    @ConfigProperty(name = "quarkus.mailer.username", defaultValue = "not set")
+    String mailerUsername;
 
     public MailerService() {
     }

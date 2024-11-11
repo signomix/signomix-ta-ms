@@ -87,6 +87,7 @@ public class MqttClient {
     @Incoming("notifications")
     public void processNotification(byte[] bytes) {
         try {
+            logger.debug("Notification received (MQTT): " + new String(bytes));
             processMessageUseCase.processNotification(bytes);
         } catch (Exception e) {
             logger.error("Error processing notification: " + e.getMessage());

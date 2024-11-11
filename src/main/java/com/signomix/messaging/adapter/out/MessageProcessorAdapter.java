@@ -1,20 +1,5 @@
 package com.signomix.messaging.adapter.out;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
-import java.util.Date;
-import java.util.List;
-
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-
-import org.cricketmsf.microsite.cms.Document;
-import org.eclipse.microprofile.config.ConfigProvider;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.eclipse.microprofile.rest.client.inject.RestClient;
-import org.jboss.logging.Logger;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.signomix.common.EventEnvelope;
@@ -30,6 +15,18 @@ import com.signomix.messaging.domain.Message;
 import com.signomix.messaging.domain.SmsPlanetResponse;
 import com.signomix.messaging.domain.Status;
 import com.signomix.messaging.webhook.WebhookService;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import java.util.List;
+import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
+import org.cricketmsf.microsite.cms.Document;
+import org.eclipse.microprofile.config.ConfigProvider;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.rest.client.inject.RestClient;
+import org.jboss.logging.Logger;
 
 @ApplicationScoped
 public class MessageProcessorAdapter implements MessageProcessorPort {
@@ -150,6 +147,9 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
     }
 
     @Override
+    public void processAlertMessage(byte[] bytes) {
+    }
+    @Override
     public void processNotification(byte[] bytes) {
         try {
             String message = new String(bytes, StandardCharsets.UTF_8);
@@ -171,7 +171,7 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
                 return;
             }
 
-            // oterwise
+            // otherwise
             processNotification(wrapper);
 
         } catch (Exception e) {

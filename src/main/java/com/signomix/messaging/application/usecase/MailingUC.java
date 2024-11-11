@@ -1,7 +1,18 @@
 package com.signomix.messaging.application.usecase;
 
+import com.signomix.common.db.IotDatabaseIface;
+import com.signomix.common.tsdb.IotDatabaseDao;
+import com.signomix.messaging.adapter.out.MailerService;
+import com.signomix.messaging.adapter.out.MailingActionRepository;
+import com.signomix.messaging.adapter.out.MessageProcessorAdapter;
+import com.signomix.messaging.domain.MailingAction;
+import com.signomix.messaging.domain.Status;
+import io.agroal.api.AgroalDataSource;
+import io.quarkus.agroal.DataSource;
+import io.quarkus.runtime.StartupEvent;
+import io.quarkus.vertx.ConsumeEvent;
+import io.smallrye.common.annotation.NonBlocking;
 import java.util.Date;
-
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
@@ -9,21 +20,6 @@ import javax.transaction.Transactional;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
-
-import com.signomix.common.db.IotDatabaseDao;
-import com.signomix.common.db.IotDatabaseIface;
-import com.signomix.messaging.adapter.out.MailerService;
-import com.signomix.messaging.adapter.out.MailingActionRepository;
-import com.signomix.messaging.adapter.out.MessageProcessorAdapter;
-import com.signomix.messaging.application.port.out.MessageProcessorPort;
-import com.signomix.messaging.domain.MailingAction;
-import com.signomix.messaging.domain.Status;
-
-import io.agroal.api.AgroalDataSource;
-import io.quarkus.agroal.DataSource;
-import io.quarkus.runtime.StartupEvent;
-import io.quarkus.vertx.ConsumeEvent;
-import io.smallrye.common.annotation.NonBlocking;
 
 
 @ApplicationScoped
@@ -50,9 +46,14 @@ public class MailingUC {
     // @ConfigProperty(name = "messaging.processor.class")
     //String usecaseClassName;
 
+    @ConfigProperty(name = "quarkus.mailer.username")
+    String mailerUsername;
+
+
     @Inject MessageProcessorAdapter messageAdapter = null;
 
     void onStart(@Observes StartupEvent ev) {
+        LOG.info("SMTP username: " + mailerUsername);
         dao = new IotDatabaseDao();
         dao.setDatasource(dataSource);
         // If there are several adapters to choose from, I can decide which one to use.

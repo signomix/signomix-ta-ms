@@ -1,27 +1,32 @@
 package com.signomix.messaging.domain.user;
 
-import com.signomix.common.MessageEnvelope;
-import com.signomix.common.User;
-import com.signomix.common.db.AuthDaoIface;
-import com.signomix.common.db.IotDatabaseException;
-import com.signomix.common.db.UserDao;
-import com.signomix.common.db.UserDaoIface;
-import com.signomix.common.hcms.Document;
-import com.signomix.messaging.adapter.out.HcmsService;
-import com.signomix.messaging.adapter.out.MessageProcessorAdapter;
-import io.agroal.api.AgroalDataSource;
-import io.quarkus.agroal.DataSource;
-import io.quarkus.runtime.StartupEvent;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
+
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
+
+import com.signomix.common.MessageEnvelope;
+import com.signomix.common.User;
+import com.signomix.common.db.AuthDaoIface;
+import com.signomix.common.db.IotDatabaseException;
+import com.signomix.common.db.UserDaoIface;
+import com.signomix.common.hcms.Document;
+import com.signomix.common.tsdb.UserDao;
+import com.signomix.messaging.adapter.out.HcmsService;
+import com.signomix.messaging.adapter.out.MessageProcessorAdapter;
+import com.signomix.messaging.application.usecase.ErrorUC;
+
+import io.agroal.api.AgroalDataSource;
+import io.quarkus.agroal.DataSource;
+import io.quarkus.runtime.StartupEvent;
 
 @ApplicationScoped
 public class UserLogic {
@@ -37,6 +42,9 @@ public class UserLogic {
     @Inject
     MessageProcessorAdapter messagePort;
 
+    @Inject
+    ErrorUC errorUC;
+
     @ConfigProperty(name = "signomix.mqtt.field.separator", defaultValue = ";")
     String mqttFieldSeparator;
 
@@ -49,7 +57,7 @@ public class UserLogic {
     String hcmsApiPath;
     /**
      * Path to the document with the ask-to-confirm message. Resulting path using
-     * defaultValue given below will be: 
+     * defaultValue given below will be:
      * hcmsApiPath + /templates/{language}/ +
      * askToConfirmDocumentPath
      */
@@ -57,33 +65,33 @@ public class UserLogic {
     String askToConfirmDocumentPath;
     /**
      * Path to the document with the account-confirmed message. Resulting path using
-     * defaultValue given below will be: 
+     * defaultValue given below will be:
      * hcmsApiPath + /templates/{language}/ + accountConfirmedDocumentPath
      */
     @ConfigProperty(name = "signomix.hcms.account-confirmed", defaultValue = "account-confirmed.html")
     String accountConfirmedDocumentPath;
     /**
      * Path to the document with the password-reset message. Resulting path using
-     * defaultValue given below will be: 
+     * defaultValue given below will be:
      * hcmsApiPath + /templates/{language}/ + passwordResetDocumentPath
      */
     @ConfigProperty(name = "signomix.hcms.password-reset", defaultValue = "password-reset.html")
     String passwordResetDocumentPath;
     /**
-     * Path to the document with the confirm-account-remove message. Resulting path using
-     * defaultValue given below will be: 
+     * Path to the document with the confirm-account-remove message. Resulting path
+     * using
+     * defaultValue given below will be:
      * hcmsApiPath + /templates/{language}/ + confirmAccountRemoveDocumentPath
      */
     @ConfigProperty(name = "signomix.hcms.confirm-account-remove", defaultValue = "confirm-account-remove.html")
     String confirmAccountRemoveDocumentPath;
     /**
      * Path to the document with the account-removed message. Resulting path using
-     * defaultValue given below will be: 
+     * defaultValue given below will be:
      * hcmsApiPath + /templates/{language}/ + accountRemovedDocumentPath
      */
     @ConfigProperty(name = "signomix.hcms.account-removed", defaultValue = "account-removed.html")
     String accountRemovedDocumentPath;
-
 
     @Inject
     @DataSource("user")
@@ -136,6 +144,7 @@ public class UserLogic {
 
     /**
      * Sends an email with a confirmation link to the user.
+     * 
      * @param userLogin
      */
     private void sendAskToConfirmEmail(String userLogin) {
@@ -152,17 +161,24 @@ public class UserLogic {
         }
 
         Document doc = null;
-        if (user.preferredLanguage.equalsIgnoreCase("pl")) {
+        String docPath=null;
+        try {
+            if (user.preferredLanguage.equalsIgnoreCase("pl")) {
+                docPath= hcmsApiPath + "/pl/" + askToConfirmDocumentPath;
+            } else {
+                docPath= hcmsApiPath + "/en/" + askToConfirmDocumentPath;
+            }
             doc = hcmsService.getDocument(hcmsApiPath + "/pl/" + askToConfirmDocumentPath);
-        } else {
-            doc = hcmsService.getDocument(hcmsApiPath + "/en/" + askToConfirmDocumentPath);
+        } catch (Exception e) {
+            logger.warn(e.getMessage());
         }
         if (null == doc) {
-            logger.info("Document not found: " + askToConfirmDocumentPath);
+            logger.info("Document not found: " + docPath);
+            errorUC.processError("Error: HCMS","Document not found: " + docPath);
             return;
         }
         String message = doc.content;
-        HashMap<String,String> valueMap = new HashMap<>();
+        HashMap<String, String> valueMap = new HashMap<>();
         valueMap.put("$API_URL$", apiUrl);
         valueMap.put("$WEBAPP_URL$", webappUrl);
         valueMap.put("$USER_NAME$", user.name);
@@ -174,32 +190,41 @@ public class UserLogic {
         String subject = doc.metadata.get("subject");
 
         /*
-        String subject_en = "Confirm Your Signomix Registration";
-        String subject_pl = "Potwierdź rejestrację w Signomix";
-        String message_en = "<p>Thank you for registering with Signomix.</p>"
-                + "<p>To activate your account, please confirm your registration by clicking on <a href=\"" + apiUrl
-                + "/api/account/confirm?key=" + user.confirmString + "&r=" + webappUrl + "\">this link</a>.<br>"
-                + "If you have any concerns or did not initiate this registration, please send e-mail to signomix@signomix.com.<br>"
-                + "If you prefer not to register, you can simply ignore this email.<br>"
-                + "We look forward to welcoming you to Signomix.</p>"
-                + "<p>Best regards,<br>"
-                + "Grzegorz Skorupa</p>";
-        String message_pl = "<p>Dziękuję za rejestrację w Signomix.</p>"
-                + "<p>Aby aktywować swoje konto, proszę o potwierdzenie rejestracji, klikając na <a href=\"" + apiUrl
-                + "/api/account/confirm?key=" + user.confirmString + "&r=" + webappUrl + "\">ten link</a>.<br>"
-                + "Jeśli masz jakiekolwiek wątpliwości lub nie zainicjowałeś/aś tej rejestracji, skontaktuj się wysyłając e-mail na adres signomix@signomix.com.<br>"
-                + "Jeśli nie chcesz się rejestrować, możesz po prostu zignorować tę wiadomość.<br>"
-                + "Czekamy z niecierpliwością na powitanie Cię w Signomiksie.</p>"
-                + "<p>Pozdrawiam,<br>"
-                + "Grzegorz Skorupa</p>";
-        if (user.preferredLanguage.equalsIgnoreCase("pl")) {
-            message = message_pl;
-            subject=subject_pl;
-        } else {
-            message = message_en;
-            subject=subject_en;
-        }
-        */
+         * String subject_en = "Confirm Your Signomix Registration";
+         * String subject_pl = "Potwierdź rejestrację w Signomix";
+         * String message_en = "<p>Thank you for registering with Signomix.</p>"
+         * +
+         * "<p>To activate your account, please confirm your registration by clicking on <a href=\""
+         * + apiUrl
+         * + "/api/account/confirm?key=" + user.confirmString + "&r=" + webappUrl +
+         * "\">this link</a>.<br>"
+         * +
+         * "If you have any concerns or did not initiate this registration, please send e-mail to signomix@signomix.com.<br>"
+         * + "If you prefer not to register, you can simply ignore this email.<br>"
+         * + "We look forward to welcoming you to Signomix.</p>"
+         * + "<p>Best regards,<br>"
+         * + "Grzegorz Skorupa</p>";
+         * String message_pl = "<p>Dziękuję za rejestrację w Signomix.</p>"
+         * +
+         * "<p>Aby aktywować swoje konto, proszę o potwierdzenie rejestracji, klikając na <a href=\""
+         * + apiUrl
+         * + "/api/account/confirm?key=" + user.confirmString + "&r=" + webappUrl +
+         * "\">ten link</a>.<br>"
+         * +
+         * "Jeśli masz jakiekolwiek wątpliwości lub nie zainicjowałeś/aś tej rejestracji, skontaktuj się wysyłając e-mail na adres signomix@signomix.com.<br>"
+         * +
+         * "Jeśli nie chcesz się rejestrować, możesz po prostu zignorować tę wiadomość.<br>"
+         * + "Czekamy z niecierpliwością na powitanie Cię w Signomiksie.</p>"
+         * + "<p>Pozdrawiam,<br>"
+         * + "Grzegorz Skorupa</p>";
+         * if (user.preferredLanguage.equalsIgnoreCase("pl")) {
+         * message = message_pl;
+         * subject=subject_pl;
+         * } else {
+         * message = message_en;
+         * subject=subject_en;
+         * }
+         */
         MessageEnvelope envelope = new MessageEnvelope();
         envelope.message = message;
         envelope.subject = subject;
@@ -220,17 +245,20 @@ public class UserLogic {
             return;
         }
         Document doc = null;
+        String docPath=null;
         if (user.preferredLanguage.equalsIgnoreCase("pl")) {
-            doc = hcmsService.getDocument(hcmsApiPath + "/pl/" + passwordResetDocumentPath);
+            docPath= hcmsApiPath + "/pl/" + passwordResetDocumentPath;
         } else {
-            doc = hcmsService.getDocument(hcmsApiPath + "/en/" + passwordResetDocumentPath);
+            docPath= hcmsApiPath + "/en/" + passwordResetDocumentPath;
         }
+        doc = hcmsService.getDocument(docPath);
         if (null == doc) {
-            logger.info("Document not found: " + passwordResetDocumentPath);
+            logger.info("Document not found: " + docPath);
+            errorUC.processError("Error: HCMS","Document not found: " + docPath);
             return;
         }
         String message = doc.content;
-        HashMap<String,String> valueMap = new HashMap<>();
+        HashMap<String, String> valueMap = new HashMap<>();
         valueMap.put("$API_URL$", apiUrl);
         valueMap.put("$WEBAPP_URL$", webappUrl);
         valueMap.put("$USER_NAME$", user.name);
@@ -242,40 +270,48 @@ public class UserLogic {
 
         message = replacePlaceholders(message, valueMap);
         String subject = doc.metadata.get("subject");
-/*         String subject_en = "Signomix Password Reset";
-        String subject_pl = "Reset hasła w Signomix";
-
-        String message_en = "<p>Dear User,</p>"
-                + "<p>We have received a request to reset your password.</p>"
-                + "<p>To reset your password, please click on <a href=\"" + webappUrl
-                + "/account/setpassword?key=" + user.confirmString + "&login=" + user.uid + "&language="
-                + user.preferredLanguage + "\">this link</a>.<br>"
-                + "If you have any concerns or did not initiate this request, please send e-mail to signomix@signomix.com.<br>"
-                + "If you prefer not to reset your password, you can simply ignore this email.</p>"
-                + "<p>Best regards,<br>"
-                + "Grzegorz Skorupa</p>";
-        String message_pl = "<p>Szanowny Użytkowniku,</p>"
-                + "<p>Otrzymaliśmy prośbę o zresetowanie Twojego hasła.</p>"
-                + "<p>Aby zresetować hasło, proszę o kliknięcie na <a href=\"" + webappUrl
-                + "/account/setpassword?key=" + user.confirmString + "&login=" + user.uid + "&language="
-                + user.preferredLanguage + "\">ten link</a>.<br>"
-                + "Jeśli masz jakiekolwiek wątpliwości lub nie zainicjowałeś/aś tej prośby, skontaktuj się wysyłając e-mail na adres signomix@signomix.com.<br>"
-                + "Jeśli nie chcesz zresetować hasła, możesz po prostu zignorować tę wiadomość.</p>"
-                + "<p>Pozdrawiam,<br>"
-                + "Grzegorz Skorupa</p>";
-
-        String message;
-        if (user.preferredLanguage.equalsIgnoreCase("pl")) {
-            message = message_pl;
-        } else {
-            message = message_en;
-        }
-        String subject;
-        if (user.preferredLanguage.equalsIgnoreCase("pl")) {
-            subject = subject_pl;
-        } else {
-            subject = subject_en;
-        } */
+        /*
+         * String subject_en = "Signomix Password Reset";
+         * String subject_pl = "Reset hasła w Signomix";
+         * 
+         * String message_en = "<p>Dear User,</p>"
+         * + "<p>We have received a request to reset your password.</p>"
+         * + "<p>To reset your password, please click on <a href=\"" + webappUrl
+         * + "/account/setpassword?key=" + user.confirmString + "&login=" + user.uid +
+         * "&language="
+         * + user.preferredLanguage + "\">this link</a>.<br>"
+         * +
+         * "If you have any concerns or did not initiate this request, please send e-mail to signomix@signomix.com.<br>"
+         * +
+         * "If you prefer not to reset your password, you can simply ignore this email.</p>"
+         * + "<p>Best regards,<br>"
+         * + "Grzegorz Skorupa</p>";
+         * String message_pl = "<p>Szanowny Użytkowniku,</p>"
+         * + "<p>Otrzymaliśmy prośbę o zresetowanie Twojego hasła.</p>"
+         * + "<p>Aby zresetować hasło, proszę o kliknięcie na <a href=\"" + webappUrl
+         * + "/account/setpassword?key=" + user.confirmString + "&login=" + user.uid +
+         * "&language="
+         * + user.preferredLanguage + "\">ten link</a>.<br>"
+         * +
+         * "Jeśli masz jakiekolwiek wątpliwości lub nie zainicjowałeś/aś tej prośby, skontaktuj się wysyłając e-mail na adres signomix@signomix.com.<br>"
+         * +
+         * "Jeśli nie chcesz zresetować hasła, możesz po prostu zignorować tę wiadomość.</p>"
+         * + "<p>Pozdrawiam,<br>"
+         * + "Grzegorz Skorupa</p>";
+         * 
+         * String message;
+         * if (user.preferredLanguage.equalsIgnoreCase("pl")) {
+         * message = message_pl;
+         * } else {
+         * message = message_en;
+         * }
+         * String subject;
+         * if (user.preferredLanguage.equalsIgnoreCase("pl")) {
+         * subject = subject_pl;
+         * } else {
+         * subject = subject_en;
+         * }
+         */
 
         MessageEnvelope envelope = new MessageEnvelope();
         envelope.message = message;
@@ -286,6 +322,7 @@ public class UserLogic {
 
     /**
      * Sends user a content created and activated email.
+     * 
      * @param userLogin
      */
     private void sendConfirmationEmail(String userLogin) {
@@ -302,17 +339,20 @@ public class UserLogic {
         }
 
         Document doc = null;
+        String docPath=null;
         if (user.preferredLanguage.equalsIgnoreCase("pl")) {
-            doc = hcmsService.getDocument(hcmsApiPath + "/pl/" + askToConfirmDocumentPath);
+            docPath= hcmsApiPath + "/pl/" + askToConfirmDocumentPath;
         } else {
-            doc = hcmsService.getDocument(hcmsApiPath + "/en/" + askToConfirmDocumentPath);
+            docPath= hcmsApiPath + "/en/" + askToConfirmDocumentPath;  
         }
+        doc = hcmsService.getDocument(docPath);
         if (null == doc) {
             logger.info("Document not found: " + doc.path);
+            errorUC.processError("Error: HCMS","Document not found: " + docPath);
             return;
         }
         String message = doc.content;
-        HashMap<String,String> valueMap = new HashMap<>();
+        HashMap<String, String> valueMap = new HashMap<>();
         valueMap.put("$API_URL$", apiUrl);
         valueMap.put("$WEBAPP_URL$", webappUrl);
         valueMap.put("$USER_NAME$", user.name);
@@ -330,40 +370,44 @@ public class UserLogic {
     }
 
     private void sendAccountRemoveRequestedEmail(String userLogin) {
-/*         String subject_en = "Signomix: Account Removal Requested";
-        String subject_pl = "Signomix: Prośba o usunięcie konta";
-        String message_en = "<p>Dear User,</p>"
-                + "<p>We have received a request to remove your account from Signomix.</p>"
-                + "<p>If you did not initiate this request or changed your mind, please send e-mail to signomix@signomix.com.<br>"
-                + "Otherwise your account will be removed in 7 days.</p>";
-        String message_pl = "<p>Szanowny Użytkowniku,</p>"
-                + "<p>Otrzymaliśmy prośbę o usunięcie Twojego konta z Signomix.</p>"
-                + "<p>Jeśli nie zainicjowałeś/aś tej prośby lub zmieniłeś/aś zdanie, proszę o wysłanie e-maila na adres signomix@signomix.com.<br>"
-                + "W przeciwnym razie Twoje konto zostanie usunięte za 7 dni.</p>";
-
-        User user = null;
-        try {
-            user = userDao.getUser(userLogin);
-        } catch (IotDatabaseException e) {
-            logger.error(e.getMessage());
-            e.printStackTrace();
-        }
-        if (null == user) {
-            logger.error("User not found: " + userLogin);
-            return;
-        }
-        String message;
-        if (user.preferredLanguage.equalsIgnoreCase("pl")) {
-            message = message_pl;
-        } else {
-            message = message_en;
-        }
-        String subject;
-        if (user.preferredLanguage.equalsIgnoreCase("pl")) {
-            subject = subject_pl;
-        } else {
-            subject = subject_en;
-        } */
+        /*
+         * String subject_en = "Signomix: Account Removal Requested";
+         * String subject_pl = "Signomix: Prośba o usunięcie konta";
+         * String message_en = "<p>Dear User,</p>"
+         * + "<p>We have received a request to remove your account from Signomix.</p>"
+         * +
+         * "<p>If you did not initiate this request or changed your mind, please send e-mail to signomix@signomix.com.<br>"
+         * + "Otherwise your account will be removed in 7 days.</p>";
+         * String message_pl = "<p>Szanowny Użytkowniku,</p>"
+         * + "<p>Otrzymaliśmy prośbę o usunięcie Twojego konta z Signomix.</p>"
+         * +
+         * "<p>Jeśli nie zainicjowałeś/aś tej prośby lub zmieniłeś/aś zdanie, proszę o wysłanie e-maila na adres signomix@signomix.com.<br>"
+         * + "W przeciwnym razie Twoje konto zostanie usunięte za 7 dni.</p>";
+         * 
+         * User user = null;
+         * try {
+         * user = userDao.getUser(userLogin);
+         * } catch (IotDatabaseException e) {
+         * logger.error(e.getMessage());
+         * e.printStackTrace();
+         * }
+         * if (null == user) {
+         * logger.error("User not found: " + userLogin);
+         * return;
+         * }
+         * String message;
+         * if (user.preferredLanguage.equalsIgnoreCase("pl")) {
+         * message = message_pl;
+         * } else {
+         * message = message_en;
+         * }
+         * String subject;
+         * if (user.preferredLanguage.equalsIgnoreCase("pl")) {
+         * subject = subject_pl;
+         * } else {
+         * subject = subject_en;
+         * }
+         */
 
         User user = null;
         try {
@@ -378,17 +422,20 @@ public class UserLogic {
         }
 
         Document doc = null;
+        String docPath=null;
         if (user.preferredLanguage.equalsIgnoreCase("pl")) {
-            doc = hcmsService.getDocument(hcmsApiPath + "/pl/" + confirmAccountRemoveDocumentPath);
+            docPath= hcmsApiPath + "/pl/" + confirmAccountRemoveDocumentPath;
         } else {
-            doc = hcmsService.getDocument(hcmsApiPath + "/en/" + confirmAccountRemoveDocumentPath);
+            docPath= hcmsApiPath + "/en/" + confirmAccountRemoveDocumentPath;
         }
+        doc = hcmsService.getDocument(docPath);
         if (null == doc) {
             logger.info("Document not found: " + confirmAccountRemoveDocumentPath);
+            errorUC.processError("Error: HCMS","Document not found: " + docPath);
             return;
         }
         String message = doc.content;
-        HashMap<String,String> valueMap = new HashMap<>();
+        HashMap<String, String> valueMap = new HashMap<>();
         valueMap.put("$API_URL$", apiUrl);
         valueMap.put("$WEBAPP_URL$", webappUrl);
         valueMap.put("$USER_NAME$", user.name);
@@ -423,24 +470,26 @@ public class UserLogic {
         }
 
         Document doc = null;
+        String docPath=null;
         if (user.preferredLanguage.equalsIgnoreCase("pl")) {
-            doc = hcmsService.getDocument(hcmsApiPath + "/pl/" + accountRemovedDocumentPath);
+            docPath= hcmsApiPath + "/pl/" + accountRemovedDocumentPath;
         } else {
-            doc = hcmsService.getDocument(hcmsApiPath + "/en/" + accountRemovedDocumentPath);
+            docPath= hcmsApiPath + "/en/" + accountRemovedDocumentPath;
         }
+        doc = hcmsService.getDocument(docPath);
         if (null == doc) {
             logger.info("Document not found: " + accountRemovedDocumentPath);
+            errorUC.processError("Error: HCMS","Document not found: " + docPath);
             return;
         }
         String message = doc.content;
-        HashMap<String,String> valueMap = new HashMap<>();
+        HashMap<String, String> valueMap = new HashMap<>();
         valueMap.put("$API_URL$", apiUrl);
         valueMap.put("$WEBAPP_URL$", webappUrl);
         valueMap.put("$USER_NAME$", user.name);
         valueMap.put("$USER_SURNAME$", user.surname);
         valueMap.put("$USER_EMAIL$", user.email);
         valueMap.put("$USER_SECRET$", user.confirmString);
-
 
         message = replacePlaceholders(message, valueMap);
         String subject = doc.metadata.get("subject");

@@ -1,27 +1,22 @@
 package com.signomix.messaging.application.usecase;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.Observes;
-import javax.inject.Inject;
-
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
-
 import com.signomix.common.Token;
 import com.signomix.common.User;
-import com.signomix.common.db.AuthDao;
 import com.signomix.common.db.AuthDaoIface;
 import com.signomix.common.db.IotDatabaseException;
-import com.signomix.common.db.UserDao;
 import com.signomix.common.db.UserDaoIface;
-//import com.signomix.messaging.application.port.out.UserServiceClient;
-
+import com.signomix.common.tsdb.AuthDao;
+import com.signomix.common.tsdb.UserDao;
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.agroal.DataSource;
 import io.quarkus.runtime.StartupEvent;
+import java.util.ArrayList;
+import java.util.List;
+import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.event.Observes;
+import javax.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.logging.Logger;
 
 @ApplicationScoped
 public class AuthUC {

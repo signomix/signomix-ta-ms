@@ -33,7 +33,7 @@ import com.signomix.messaging.webhook.WebhookService;
 
 @ApplicationScoped
 public class MqttProcessorAdapter implements MessageProcessorPort {
-    private static final Logger LOG = Logger.getLogger(MessageProcessorAdapter.class);
+    private static final Logger LOG = Logger.getLogger(MqttProcessorAdapter.class);
 
     protected MailerService mailerService;
     IotDatabaseIface dao;
@@ -105,7 +105,7 @@ public class MqttProcessorAdapter implements MessageProcessorPort {
     }
 
     @Override
-    public void processNotification(byte[] bytes) {
+    public void processAlertMessage(byte[] bytes) {
         try {
             String message = new String(bytes, StandardCharsets.UTF_8);
             LOG.info("Received: " + message); // "userId\teui\tmessageType\tmessageText"
@@ -174,6 +174,10 @@ public class MqttProcessorAdapter implements MessageProcessorPort {
             LOG.error(e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    @Override
+    public void processNotification(byte[] bytes) {
     }
 
     public void processMailing(MailingAction action) {

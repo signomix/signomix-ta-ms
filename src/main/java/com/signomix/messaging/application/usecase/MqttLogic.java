@@ -1,7 +1,8 @@
 package com.signomix.messaging.application.usecase;
 
-import com.signomix.common.db.IotDatabaseDao;
+
 import com.signomix.common.db.IotDatabaseIface;
+import com.signomix.common.tsdb.IotDatabaseDao;
 import com.signomix.messaging.adapter.out.MailerService;
 import com.signomix.messaging.adapter.out.MailingActionRepository;
 import com.signomix.messaging.adapter.out.MqttProcessorAdapter;
@@ -54,7 +55,7 @@ public class MqttLogic {
     }
 
     public void processMqttAlerts(byte[] bytes) {
-        messageAdapter.processNotification(bytes);
+        messageAdapter.processAlertMessage(bytes);
     }
 
     public void processDataCreated(byte[] bytes) {

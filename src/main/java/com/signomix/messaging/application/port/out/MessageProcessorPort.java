@@ -12,6 +12,7 @@ public interface MessageProcessorPort {
     public void processEvent(byte[] bytes);
     public void processAdminEmail(byte[] bytes);
     public void processNotification(byte[] bytes);
+    public void processAlertMessage(byte[] bytes);
     public void setMailerService(MailerService service);
     public void setApplicationKey(String key);
     public void setAuthHost(String authHost);

@@ -1,19 +1,16 @@
 package com.signomix.messaging.application.usecase;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.Observes;
-import javax.inject.Inject;
-
-import org.jboss.logging.Logger;
-
-import com.signomix.common.db.IotDatabaseDao;
 import com.signomix.common.db.IotDatabaseException;
 import com.signomix.common.db.IotDatabaseIface;
 import com.signomix.common.iot.Device;
-
+import com.signomix.common.tsdb.IotDatabaseDao;
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.agroal.DataSource;
 import io.quarkus.runtime.StartupEvent;
+import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.event.Observes;
+import javax.inject.Inject;
+import org.jboss.logging.Logger;
 
 
 @ApplicationScoped
@@ -36,6 +33,7 @@ public class DeviceUC {
 
     public Device getDevice(String eui){
         try {
+            LOG.debug(eui);
             return dao.getDevice(eui, false);
         } catch (IotDatabaseException e) {
             LOG.error("getDevice error",e);
