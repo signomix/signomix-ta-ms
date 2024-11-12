@@ -1,8 +1,16 @@
 package com.signomix.messaging.adapter.in;
 
+import com.signomix.common.MessageEnvelope;
+import com.signomix.common.User;
+import com.signomix.common.annotation.InboundAdapter;
+import com.signomix.common.news.NewsDefinition;
+import com.signomix.messaging.adapter.out.MailingActionRepository;
+import com.signomix.messaging.application.port.in.MailingPort;
+import com.signomix.messaging.domain.AuthLogic;
+import com.signomix.messaging.domain.news.NewsLogic;
+import io.quarkus.logging.Log;
 import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
 import javax.ws.rs.Consumes;
@@ -11,28 +19,11 @@ import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
-
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
-
-import com.signomix.common.MessageEnvelope;
-import com.signomix.common.User;
-import com.signomix.common.annotation.InboundAdapter;
-import com.signomix.common.db.AuthDaoIface;
-import com.signomix.common.news.NewsDefinition;
-import com.signomix.messaging.adapter.out.MailingActionRepository;
-//import com.signomix.messaging.adapter.out.SmtpAdapter;
-import com.signomix.messaging.application.port.in.MailingPort;
-import com.signomix.messaging.domain.AuthLogic;
-import com.signomix.messaging.domain.news.NewsSender;
-
-import io.agroal.api.AgroalDataSource;
-import io.quarkus.agroal.DataSource;
-import io.quarkus.logging.Log;
-import io.quarkus.runtime.StartupEvent;
 
 @InboundAdapter
 @ApplicationScoped
@@ -52,7 +43,7 @@ public class MessagingRestApi {
     MailingPort mailingPort;
 
     @Inject
-    NewsSender newsSender;
+    NewsLogic newsLogic;
 
     @PostConstruct
     void init() {
@@ -99,17 +90,51 @@ public class MessagingRestApi {
         return Response.ok().build();
     }
 
+    /**
+     * Send news to selected users
+     * 
+     * @param token      API token
+     * @param definition News definition
+     */
     @POST
     @Path("/news")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response sendNews(@HeaderParam("Authentication") String token, NewsDefinition definition) {
         User user = authLogic.getUserFromToken(token);
-        if(user==null){
+        if (user == null) {
             return Response.status(Response.Status.UNAUTHORIZED).entity("user not found").build();
         }
-        newsSender.sendNews(user,definition);
+        newsLogic.sendNews(user, definition);
         return Response.ok().build();
+    }
+
+    @GET
+    @Path("/news")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getNews(@HeaderParam("Authentication") String token,
+            @QueryParam("language") String language,
+            @QueryParam("limit") Long limit,
+            @QueryParam("offset") Long offset) {
+        User user = authLogic.getUserFromToken(token);
+        if (user == null) {
+            return Response.status(Response.Status.UNAUTHORIZED).entity("user not found").build();
+        }
+        return Response.ok().entity(newsLogic.getNewsForUser(user, language, limit, offset)).build();
+    }
+
+    /**
+     * Get news issue
+     */
+    @GET
+    @Path("/news/{id}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getNewsIssue(@HeaderParam("Authentication") String token, @QueryParam("id") Long id) {
+        User user = authLogic.getUserFromToken(token);
+        if (user == null) {
+            return Response.status(Response.Status.UNAUTHORIZED).entity("user not found").build();
+        }
+        return Response.ok().entity(newsLogic.getNewsIssue(user,id)).build();
     }
 
     /*

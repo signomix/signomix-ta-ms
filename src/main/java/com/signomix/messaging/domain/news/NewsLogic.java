@@ -1,17 +1,5 @@
 package com.signomix.messaging.domain.news;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.Observes;
-import javax.inject.Inject;
-
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
-
 import com.signomix.common.User;
 import com.signomix.common.db.IotDatabaseException;
 import com.signomix.common.db.NewsDaoIface;
@@ -19,19 +7,28 @@ import com.signomix.common.db.UserDaoIface;
 import com.signomix.common.hcms.Document;
 import com.signomix.common.news.NewsDefinition;
 import com.signomix.common.news.NewsEnvelope;
+import com.signomix.common.news.UserNewsDto;
 import com.signomix.messaging.adapter.out.HcmsService;
 import com.signomix.messaging.adapter.out.MailerService;
 import com.signomix.messaging.domain.user.UserLogic;
-
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.agroal.DataSource;
 import io.quarkus.runtime.StartupEvent;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.event.Observes;
+import javax.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.logging.Logger;
 
 @ApplicationScoped
-public class NewsSender {
+public class NewsLogic {
 
     @Inject
-    Logger logger = Logger.getLogger(NewsSender.class);
+    Logger logger = Logger.getLogger(NewsLogic.class);
 
     @Inject
     @DataSource("user")
@@ -61,6 +58,22 @@ public class NewsSender {
         userDao.setDatasource(userDataSource);
         newsDao = new com.signomix.common.tsdb.NewsDao();
         newsDao.setDatasource(tsDataSource);
+    }
+
+    public UserNewsDto getNewsForUser(User user, String language, Long limit, Long offset) {
+        UserNewsDto userNews = new UserNewsDto();
+        try {
+            userNews = newsDao.getUserNews(user.uid, language, null, limit, offset);
+        } catch (IotDatabaseException e) {
+            logger.error("Error getting news for user: " + e.getMessage());
+            userNews.errorMessage = e.getMessage();
+        }
+        return userNews;
+    }
+
+    public Object getNewsIssue(User user, Long newsId) {
+        // get news issue
+        return null;
     }
 
     public void sendNews(User user, NewsDefinition news) {
