@@ -1,14 +1,5 @@
 package com.signomix.messaging.adapter.in;
 
-import com.signomix.common.MessageEnvelope;
-import com.signomix.common.User;
-import com.signomix.common.annotation.InboundAdapter;
-import com.signomix.common.news.NewsDefinition;
-import com.signomix.messaging.adapter.out.MailingActionRepository;
-import com.signomix.messaging.application.port.in.MailingPort;
-import com.signomix.messaging.domain.AuthLogic;
-import com.signomix.messaging.domain.news.NewsLogic;
-import io.quarkus.logging.Log;
 import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -18,12 +9,25 @@ import javax.ws.rs.GET;
 import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
+
 import org.jboss.logging.Logger;
+
+import com.signomix.common.MessageEnvelope;
+import com.signomix.common.User;
+import com.signomix.common.annotation.InboundAdapter;
+import com.signomix.common.news.NewsDefinition;
+import com.signomix.messaging.adapter.out.MailingActionRepository;
+import com.signomix.messaging.application.port.in.MailingPort;
+import com.signomix.messaging.domain.AuthLogic;
+import com.signomix.messaging.domain.news.NewsLogic;
+
+import io.quarkus.logging.Log;
 
 @InboundAdapter
 @ApplicationScoped
@@ -120,7 +124,7 @@ public class MessagingRestApi {
         if (user == null) {
             return Response.status(Response.Status.UNAUTHORIZED).entity("user not found").build();
         }
-        return Response.ok().entity(newsLogic.getNewsForUser(user, language, limit, offset)).build();
+        return Response.ok().entity(newsLogic.getNewsForUser(user, language, limit!=null?limit:20, offset!=null?offset:0)).build();
     }
 
     /**
@@ -129,12 +133,13 @@ public class MessagingRestApi {
     @GET
     @Path("/news/{id}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getNewsIssue(@HeaderParam("Authentication") String token, @QueryParam("id") Long id) {
+    public Response getNewsIssue(@HeaderParam("Authentication") String token, @PathParam("id") Long id,
+            @QueryParam("language") String language) {
         User user = authLogic.getUserFromToken(token);
         if (user == null) {
             return Response.status(Response.Status.UNAUTHORIZED).entity("user not found").build();
         }
-        return Response.ok().entity(newsLogic.getNewsIssue(user,id)).build();
+        return Response.ok().entity(newsLogic.getNewsIssue(user,id,language)).build();
     }
 
     /*

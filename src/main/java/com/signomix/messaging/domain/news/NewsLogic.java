@@ -71,9 +71,23 @@ public class NewsLogic {
         return userNews;
     }
 
-    public Object getNewsIssue(User user, Long newsId) {
+    public Document getNewsIssue(User user, Long newsId, String language) {
         // get news issue
-        return null;
+        try {
+            Document document = newsDao.getNewsDocument(newsId, language);
+            if (document == null) {
+                document = newsDao.getNewsDocument(newsId, defaultLanguage);
+            }
+            return document;
+        } catch (IotDatabaseException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+            Document doc = new Document();
+            doc.content = "Document not found<br>" + e.getMessage();
+            doc.name = "Error";
+            doc.metadata.put("title", "Error");
+            return doc;
+        }
     }
 
     public void sendNews(User user, NewsDefinition news) {
