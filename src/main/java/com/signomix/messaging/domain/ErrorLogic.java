@@ -1,15 +1,15 @@
-package com.signomix.messaging.application.usecase;
+package com.signomix.messaging.domain;
 
+import com.signomix.messaging.adapter.out.MailerService;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
-import com.signomix.messaging.adapter.out.MailerService;
 
 
 @ApplicationScoped
-public class ErrorUC {
-    private static final Logger LOG = Logger.getLogger(ErrorUC.class);
+public class ErrorLogic {
+    private static final Logger LOG = Logger.getLogger(ErrorLogic.class);
     
     @Inject
     MailerService mailerService;

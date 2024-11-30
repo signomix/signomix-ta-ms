@@ -1,15 +1,14 @@
 package com.signomix.messaging.adapter.out;
 
+import com.signomix.messaging.domain.SmsPlanetResponse;
 import javax.enterprise.context.ApplicationScoped;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.FormParam;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.MediaType;
-
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
-
-import com.signomix.messaging.domain.SmsPlanetResponse;
 
 @ApplicationScoped
 @RegisterRestClient(configKey="smsplanet-api")
@@ -29,11 +28,10 @@ public interface SmsplanetClient {
     @POST
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
     public SmsPlanetResponse sendSms(
-        @FormParam("key") String key, 
-        @FormParam("password") String password, 
-        @FormParam("from") String from, 
-        @FormParam("to") String to, 
-        @FormParam("name") String title,
-        @FormParam("msg") String msg);
+        @HeaderParam("Authorization") String token, // "Bearer token" eg. "Bearer 123456"
+        @FormParam("from") String from, // service name
+        @FormParam("to") String to, // phone number
+        @FormParam("msg") String msg, // message content
+        @FormParam("test") int test); // 1 for test, 0 for production
     
 }

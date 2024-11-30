@@ -1,8 +1,8 @@
 package com.signomix.messaging.adapter.in;
 
-import com.signomix.messaging.application.usecase.MqttLogic;
-import com.signomix.messaging.application.usecase.ProcessNotificationMessageUC;
-import com.signomix.messaging.domain.deviceCommands.CommandSendingLogic;
+import com.signomix.messaging.domain.data.DataLogic;
+import com.signomix.messaging.domain.device.CommandSendingLogic;
+import com.signomix.messaging.domain.notification.NotificationLogic;
 import com.signomix.messaging.domain.order.OrderLogic;
 import com.signomix.messaging.domain.user.UserLogic;
 import javax.enterprise.context.ApplicationScoped;
@@ -17,7 +17,7 @@ public class MqttClient {
     Logger logger = Logger.getLogger(MqttClient.class);
 
     @Inject
-    MqttLogic mqttLogic;
+    DataLogic dataLogic;
 
     @Inject
     UserLogic userLogic;
@@ -29,13 +29,13 @@ public class MqttClient {
     CommandSendingLogic commandSendingLogic;
 
     @Inject
-    ProcessNotificationMessageUC processMessageUseCase;
+    NotificationLogic notificationLogic;
 
     @Incoming("alerts")
     public void processAlert(byte[] bytes) {
         try {
             logger.info("Alert received: " + new String(bytes));
-            mqttLogic.processMqttAlerts(bytes);
+            notificationLogic.processAlert(bytes);
         } catch (Exception e) {
             logger.error("Error processing alert: " + e.getMessage());
         }
@@ -57,7 +57,7 @@ public class MqttClient {
     public void processDataCreated(byte[] bytes) {
         try {
             logger.info("Data created event received: " + new String(bytes));
-            mqttLogic.processDataCreated(bytes);
+            dataLogic.processDataCreated(bytes);
         } catch (Exception e) {
             logger.error("Error processing data created event: " + e.getMessage());
         }
@@ -88,7 +88,7 @@ public class MqttClient {
     public void processNotification(byte[] bytes) {
         try {
             logger.debug("Notification received (MQTT): " + new String(bytes));
-            processMessageUseCase.processNotification(bytes);
+            notificationLogic.processNotification(bytes);
         } catch (Exception e) {
             logger.error("Error processing notification: " + e.getMessage());
         }
@@ -98,7 +98,7 @@ public class MqttClient {
     public void processAdminEmail(byte[] bytes) {
         try {
             logger.debug("Admin email received (MQTT): " + new String(bytes));
-            processMessageUseCase.processAdminEmail(bytes);
+            notificationLogic.processAdminEmail(bytes);
         } catch (Exception e) {
             logger.error("Error processing admin email: " + e.getMessage());
         }

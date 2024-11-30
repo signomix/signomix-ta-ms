@@ -1,4 +1,4 @@
-package com.signomix.messaging.application.usecase;
+package com.signomix.messaging.domain.device;
 
 import com.signomix.common.db.IotDatabaseException;
 import com.signomix.common.db.IotDatabaseIface;
@@ -14,7 +14,7 @@ import org.jboss.logging.Logger;
 
 
 @ApplicationScoped
-public class DeviceUC {
+public class DeviceLogic {
 
     @Inject
     Logger LOG;

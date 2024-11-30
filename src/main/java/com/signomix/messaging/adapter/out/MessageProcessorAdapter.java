@@ -6,30 +6,34 @@ import com.signomix.common.EventEnvelope;
 import com.signomix.common.MessageEnvelope;
 import com.signomix.common.User;
 import com.signomix.common.db.IotDatabaseIface;
+import com.signomix.common.hcms.Document;
 import com.signomix.common.iot.Device;
-import com.signomix.messaging.application.port.out.MessageProcessorPort;
-import com.signomix.messaging.application.usecase.AuthUC;
-import com.signomix.messaging.application.usecase.DeviceUC;
+import com.signomix.common.proprietary.AccountTypesIface;
+import com.signomix.common.proprietary.ExtensionConfig;
+import com.signomix.messaging.application.port.out.MessageProcessorIface;
+import com.signomix.messaging.domain.AuthLogic;
 import com.signomix.messaging.domain.MailingAction;
 import com.signomix.messaging.domain.Message;
 import com.signomix.messaging.domain.SmsPlanetResponse;
 import com.signomix.messaging.domain.Status;
+import com.signomix.messaging.domain.device.DeviceLogic;
 import com.signomix.messaging.webhook.WebhookService;
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
+import com.signomix.proprietary.ExtensionPoints;
+
+import io.quarkus.runtime.StartupEvent;
+
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
 import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.event.Observes;
 import javax.inject.Inject;
-import org.cricketmsf.microsite.cms.Document;
 import org.eclipse.microprofile.config.ConfigProvider;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
+import com.signomix.common.proprietary.*;
 
 @ApplicationScoped
-public class MessageProcessorAdapter implements MessageProcessorPort {
+public class MessageProcessorAdapter implements MessageProcessorIface {
     private static final Logger LOG = Logger.getLogger(MessageProcessorAdapter.class);
 
     protected MailerService mailerService;
@@ -41,20 +45,23 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
      */
 
     @Inject
-    AuthUC authUC;
+    AuthLogic authUC;
 
     @Inject
-    DeviceUC deviceUC;
+    DeviceLogic deviceUC;
 
-    @RestClient
+    // @RestClient
+    // @Inject
+    // SmsplanetClient smsplanetClient;
+
     @Inject
-    SmsplanetClient smsplanetClient;
+    SmsplanetService smsService;
 
-    @ConfigProperty(name = "signomix.smsplanet.key", defaultValue = "")
-    String smsKey;
+    // @ConfigProperty(name = "signomix.smsplanet.key", defaultValue = "")
+    // String smsKey;
 
-    @ConfigProperty(name = "signomix.smsplanet.password", defaultValue = "")
-    String smsPassword;
+    // @ConfigProperty(name = "signomix.smsplanet.password", defaultValue = "")
+    // String smsPassword;
 
     MailingActionRepository mailingRepository;
 
@@ -109,6 +116,90 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
         LOG.debug(wrapper.type + " " + wrapper.uuid + " " + wrapper.payload);
     }
 
+    @Override
+    public void processAlertMessage(byte[] bytes) {
+        try {
+            String message = new String(bytes, StandardCharsets.UTF_8);
+            LOG.info("Received: " + message); // "userId\teui\tmessageType\tmessageText"
+            String[] params = message.split("\t");
+            String userId = params[0];
+            String deviceEui = params[1];
+            String messageType = params[2];
+            String messageText = params[3];
+            String messageSubject = "";
+            if (params.length > 4) {
+                messageSubject = params[4];
+            }
+
+            String address = null;
+            String messageChannel = null;
+            User user = getUser(userId);
+            if (null == user) {
+                LOG.warn("user not found " + userId);
+                return;
+            }
+            String[] channelConfig = user.getChannelConfig(messageType);
+            if (channelConfig == null || channelConfig.length < 2) {
+                LOG.debug("Channel not configured " + messageType + " " + channelConfig.length);
+            } else {
+                LOG.debug(channelConfig[0] + " " + channelConfig[1]);
+                messageChannel = channelConfig[0];
+                if (channelConfig.length == 2) {
+                    address = channelConfig[1];
+                } else {
+                    // in case when address has ':'
+                    address = "";
+                    for (int i = 1; i < channelConfig.length - 1; i++) {
+                        address = address + channelConfig[i] + ":";
+                    }
+                    address = address + channelConfig[channelConfig.length - 1];
+                }
+
+                if (null != address && !address.isEmpty()) {
+                    switch (messageChannel.toUpperCase()) {
+                        case "SMTP":
+                            LOG.info("sending with SMTP");
+                            if (null == messageSubject || messageSubject.isEmpty()) {
+                                messageSubject = "Signomix notification";
+                            }
+                            mailerService.sendEmail(address, messageSubject, messageText, null);
+                            break;
+                        case "WEBHOOK":
+                            LOG.info("sending with WEBHOOK");
+                            new WebhookService().send(address, new Message(deviceEui, messageText, messageSubject));
+                            break;
+                        case "SMS":
+                            // check user credits if required
+                            if (ExtensionPoints.isControlled() && user.credits < 0) {
+                                LOG.warn("User has no credits: " + user.uid);
+                                return;
+                            }
+                            if (address == null || address.trim().isEmpty()) {
+                                LOG.warn("SMS address is empty; " + user.uid);
+                                return;
+                            }
+                            String phoneNumber;
+                            if (user.phonePrefix != null && !user.phonePrefix.isEmpty()) {
+                                phoneNumber = user.phonePrefix + address;
+                            } else {
+                                phoneNumber = address;
+                            }
+                            smsService.send(
+                                    phoneNumber,
+                                    new Message(userId, messageText, messageSubject),
+                                    false);
+                            break;
+                        default:
+                            LOG.warnf("Unsupported message type %1s", messageType);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LOG.error(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     public void processAdminEmail(MessageEnvelope wrapper) {
         String emailAddress = wrapper.user.email;
         if (null == emailAddress || emailAddress.isEmpty()) {
@@ -146,9 +237,6 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
         mailerService.sendEmail(emailAddress, wrapper.subject, wrapper.message, null);
     }
 
-    @Override
-    public void processAlertMessage(byte[] bytes) {
-    }
     @Override
     public void processNotification(byte[] bytes) {
         try {
@@ -221,24 +309,24 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
                                 new Message(wrapper.eui, wrapper.message, wrapper.subject));
                         break;
                     case "SMS":
-                        if (user.credits > 0) {
-                            // SmsplanetService smsService = new SmsplanetService();
-                            // smsService.send(user, address, new Message(wrapper.eui, wrapper.message));
-                            LOG.debug("SMSPLANET: " + " SIGNOMIX " + user.phonePrefix + address + " test "
-                                    + wrapper.message);
-                            SmsPlanetResponse response = smsplanetClient.sendSms(
-                                    smsKey,
-                                    smsPassword,
-                                    "SIGNOMIX",
-                                    user.phonePrefix + address,
-                                    wrapper.type,
-                                    wrapper.type + ": " + wrapper.message);
-                            LOG.debug("SMSPLANET RESPONSE: " + response.messageId + " " + response.errorCode + " "
-                                    + response.errorMsg);
-                        } else {
-                            // TODO: error
-                            LOG.debug(messageChannel + " not sent, no credits");
+                        if (ExtensionPoints.isControlled() && user.credits < 0) {
+                            LOG.warn("User has no credits: " + user.uid);
+                            return;
                         }
+                        if (address == null || address.trim().isEmpty()) {
+                            LOG.warn("SMS address is empty; " + user.uid);
+                            return;
+                        }
+                        String phoneNumber;
+                        if (user.phonePrefix != null && !user.phonePrefix.isEmpty()) {
+                            phoneNumber = user.phonePrefix.trim() + address;
+                        } else {
+                            phoneNumber = address;
+                        }
+                        SmsPlanetResponse response = smsService.send(
+                                phoneNumber,
+                                new Message(user.uid, wrapper.type + ": " + wrapper.message, wrapper.type),
+                                false);
                         break;
 
                     default:
@@ -266,18 +354,24 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
         String contentPL;
         String subjectEN;
         String contentEN;
-        try {
-            subjectPL = URLDecoder.decode(docPl.getTitle(), "UTF-8");
-            contentPL = URLDecoder.decode(docPl.getContent(), "UTF-8");
-            subjectEN = URLDecoder.decode(docEn.getTitle(), "UTF-8");
-            contentEN = URLDecoder.decode(docEn.getContent(), "UTF-8");
-        } catch (UnsupportedEncodingException ex) {
-            LOG.error(ex.getMessage());
-            action.setStatus(Status.Failed);
-            action.setError(ex.getMessage());
-            // save?
-            return;
-        }
+        subjectPL = docPl.metadata.get("title");
+        contentPL = docPl.content;
+        subjectEN = docEn.metadata.get("title");
+        contentEN = docEn.content;
+        /*
+         * try {
+         * subjectPL = URLDecoder.decode(docPl.getTitle(), "UTF-8");
+         * contentPL = URLDecoder.decode(docPl.getContent(), "UTF-8");
+         * subjectEN = URLDecoder.decode(docEn.getTitle(), "UTF-8");
+         * contentEN = URLDecoder.decode(docEn.getContent(), "UTF-8");
+         * } catch (UnsupportedEncodingException ex) {
+         * LOG.error(ex.getMessage());
+         * action.setStatus(Status.Failed);
+         * action.setError(ex.getMessage());
+         * // save?
+         * return;
+         * }
+         */
         action.setStartedAt(new Date());
         String subject;
         String content;
@@ -340,32 +434,21 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
 
     private Document getWelcomeDocument(String uid, String language) {
         Document doc = new Document();
-        doc.setUid(uid);
-        switch (language) {
-            case "pl":
-                doc.setTitle("Test welcome");
-                doc.setContent("Test content");
-                break;
-            default:
-                doc.setTitle("Test welcome");
-                doc.setContent("Test content");
-                break;
-        }
-
+        doc.metadata.put("title", "Test welcome");
+        doc.content = "Test content";
         return doc;
     }
 
     private Document getMailingDocument(String uid, String language) {
         Document doc = new Document();
-        doc.setUid(uid);
-        doc.setTitle("Test mailing");
-        doc.setContent("Test content");
+        doc.metadata.put("title", "Test mai  ling");
+        doc.content = "Test content";
         return doc;
     }
 
     public void processDirectEmail(MessageEnvelope wrapper) {
         LOG.debug("DIRECT_EMAIL");
-        mailerService.sendEmail(wrapper.user.email, wrapper.subject, wrapper.message,   null);
+        mailerService.sendEmail(wrapper.user.email, wrapper.subject, wrapper.message, null);
     }
 
     private void processWelcomeEmail(MessageEnvelope wrapper) {
@@ -412,88 +495,35 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
         Document docToSend;
         String subject = "";
         String content = "";
-        try {
-            switch (user.preferredLanguage.toUpperCase()) {
-                case "PL":
-                    docToSend = docPl;
-                    subject = URLDecoder.decode(docToSend.getTitle(), "UTF-8");
-                    content = URLDecoder.decode(docToSend.getContent(), "UTF-8");
-                    content = content.replaceFirst("\\$user.name", user.name);
-                    content = content.replaceFirst("\\$user.surname", user.surname);
-                    content = content.replaceFirst("\\$user.uid", user.uid);
-                    mailerService.sendEmail(user.email, subject, content, null);
-                    break;
-                // case "EN":
-                default:
-                    docToSend = docEn;
-                    subject = URLDecoder.decode(docToSend.getTitle(), "UTF-8");
-                    content = URLDecoder.decode(docToSend.getContent(), "UTF-8");
-                    content = content.replaceFirst("\\$user.name", user.name);
-                    content = content.replaceFirst("\\$user.surname", user.surname);
-                    content = content.replaceFirst("\\$user.uid", user.uid);
-                    mailerService.sendEmail(user.email, subject, content,   null);
-                    break;
-            }
-        } catch (UnsupportedEncodingException ex) {
-            LOG.error(ex.getMessage());
-            return;
+        switch (user.preferredLanguage.toUpperCase()) {
+            case "PL":
+                docToSend = docPl;
+                break;
+            // case "EN":
+            default:
+                docToSend = docEn;
+                break;
         }
+        subject = docToSend.metadata.get("title");
+        content = docToSend.content;
+        content = content.replaceFirst("\\$user.name", user.name);
+        content = content.replaceFirst("\\$user.surname", user.surname);
+        content = content.replaceFirst("\\$user.uid", user.uid);
+        mailerService.sendEmail(user.email, subject, content, null);
         mailerService.sendEmail(user.email, subject, content, null);
     }
 
-    /*
-     * private List<User> getUsers(String role) {
-     * //UserServiceClient client;
-     * List<User> users;
-     * try {
-     * client = RestClientBuilder.newBuilder()
-     * .baseUri(new URI(authHost))
-     * .followRedirects(true)
-     * .build(UserServiceClient.class);
-     * users = client.getUsers(appKey, role);
-     * return users;
-     * } catch (URISyntaxException ex) {
-     * LOG.error(ex.getMessage());
-     * // TODO: notyfikacja użytkownika o błędzie
-     * } catch (ProcessingException ex) {
-     * LOG.error(ex.getMessage());
-     * } catch (WebApplicationException ex) {
-     * LOG.error(ex.getMessage());
-     * } catch (Exception ex) {
-     * LOG.error(ex.getMessage());
-     * // TODO: notyfikacja użytkownika o błędzie
-     * }
-     * return new ArrayList<>();
-     * }
-     */
-
     private User getUser(User user) {
         String uid = user.uid;
-        // UserServiceClient client;
+        return getUser(uid);
+    }
+
+    private User getUser(String uid) {
         User completedUser = null;
-        /*
-         * try {
-         * client = RestClientBuilder.newBuilder()
-         * .baseUri(new URI(authHost))
-         * .followRedirects(true)
-         * .build(UserServiceClient.class);
-         * completedUser = client.getUser(uid, appKey);
-         * } catch (URISyntaxException ex) {
-         * LOG.error(ex.getMessage());
-         * // TODO: notyfikacja użytkownika o błędzie
-         * } catch (ProcessingException ex) {
-         * LOG.error(ex.getMessage());
-         * } catch (WebApplicationException ex) {
-         * LOG.error(ex.getMessage());
-         * } catch (Exception ex) {
-         * LOG.error(ex.getMessage());
-         * // TODO: notyfikacja użytkownika o błędzie
-         * }
-         */
         LOG.info("getUser " + uid);
         LOG.info("authUC " + authUC);
         completedUser = authUC.getUser(uid);
-        System.out.println(completedUser.toString());
+        // System.out.println(completedUser.toString());
         return completedUser;
     }
 
@@ -554,8 +584,8 @@ public class MessageProcessorAdapter implements MessageProcessorPort {
 
     @Override
     public void processDataCreated(byte[] bytes) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'processDataCreated'");
+        String message = new String(bytes, StandardCharsets.UTF_8);
+        LOG.debug("DATA_CREATED2: " + message);
     }
 
 }

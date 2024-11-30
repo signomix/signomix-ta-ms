@@ -1,5 +1,14 @@
 package com.signomix.messaging.adapter.in;
 
+import com.signomix.common.MessageEnvelope;
+import com.signomix.common.User;
+import com.signomix.common.annotation.InboundAdapter;
+import com.signomix.common.news.NewsDefinition;
+import com.signomix.messaging.adapter.out.MailingActionRepository;
+import com.signomix.messaging.domain.AuthLogic;
+import com.signomix.messaging.domain.mailing.MailingLogic;
+import com.signomix.messaging.domain.news.NewsLogic;
+import io.quarkus.logging.Log;
 import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
@@ -15,19 +24,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
-
 import org.jboss.logging.Logger;
-
-import com.signomix.common.MessageEnvelope;
-import com.signomix.common.User;
-import com.signomix.common.annotation.InboundAdapter;
-import com.signomix.common.news.NewsDefinition;
-import com.signomix.messaging.adapter.out.MailingActionRepository;
-import com.signomix.messaging.application.port.in.MailingPort;
-import com.signomix.messaging.domain.AuthLogic;
-import com.signomix.messaging.domain.news.NewsLogic;
-
-import io.quarkus.logging.Log;
 
 @InboundAdapter
 @ApplicationScoped
@@ -44,7 +41,7 @@ public class MessagingRestApi {
     // SmtpAdapter mailerService;
 
     @Inject
-    MailingPort mailingPort;
+    MailingLogic mailingPort;
 
     @Inject
     NewsLogic newsLogic;
@@ -89,7 +86,6 @@ public class MessagingRestApi {
         String documentPath = form.getFirst("doc");
         String target = form.getFirst("target");
 
-        // mailingPort.sendDocument(documentUid, target, token);
         mailingPort.addPlannedMailing(documentPath, target, token);
         return Response.ok().build();
     }

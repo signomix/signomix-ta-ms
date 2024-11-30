@@ -1,5 +1,20 @@
 package com.signomix.messaging.domain.order;
 
+import com.signomix.common.MessageEnvelope;
+import com.signomix.common.User;
+import com.signomix.common.billing.Order;
+import com.signomix.common.billing.ValueToTextConverter;
+import com.signomix.common.db.BillingDaoIface;
+import com.signomix.common.db.IotDatabaseException;
+import com.signomix.common.db.UserDaoIface;
+import com.signomix.common.hcms.Document;
+import com.signomix.common.tsdb.BillingDao;
+import com.signomix.common.tsdb.UserDao;
+import com.signomix.messaging.adapter.out.HcmsService;
+import com.signomix.messaging.adapter.out.MessageProcessorAdapter;
+import io.agroal.api.AgroalDataSource;
+import io.quarkus.agroal.DataSource;
+import io.quarkus.runtime.StartupEvent;
 import java.sql.Timestamp;
 import java.text.NumberFormat;
 import java.time.LocalDate;
@@ -11,31 +26,19 @@ import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
-
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
-import com.signomix.common.MessageEnvelope;
-import com.signomix.common.User;
-import com.signomix.common.billing.Order;
-import com.signomix.common.billing.ValueToTextConverter;
-import com.signomix.common.db.BillingDaoIface;
-import com.signomix.common.db.IotDatabaseException;
-import com.signomix.common.hcms.Document;
-import com.signomix.common.tsdb.BillingDao;
-import com.signomix.messaging.adapter.out.HcmsService;
-import com.signomix.messaging.adapter.out.MessageProcessorAdapter;
-
-import io.agroal.api.AgroalDataSource;
-import io.quarkus.agroal.DataSource;
-import io.quarkus.runtime.StartupEvent;
-
 @ApplicationScoped
 public class OrderLogic {
+
+    private static final String DEFAULT_LANGUAGE = "pl";
+    private static final int ORDER_CREATED = 0;
+    private static final int ORDER_PROFORMA = 1;
+    private static final int ORDER_INVOICE = 2;
 
     @Inject
     Logger logger;
@@ -80,7 +83,12 @@ public class OrderLogic {
     @DataSource("billing")
     AgroalDataSource billingDataSource;
 
+    @Inject
+    @DataSource("user")
+    AgroalDataSource userDataSource;
+
     BillingDaoIface billingDao;
+    UserDaoIface userDao;
 
     @Inject
     HcmsService hcmsService;
@@ -88,6 +96,8 @@ public class OrderLogic {
     void onStart(@Observes StartupEvent ev) {
         billingDao = new BillingDao();
         billingDao.setDatasource(billingDataSource);
+        userDao = new UserDao();
+        userDao.setDatasource(userDataSource);
     }
 
     public void processOrderEvent(String message) {
@@ -102,14 +112,22 @@ public class OrderLogic {
 
         switch (eventType.toLowerCase()) {
             case "created":
-                sendEmails(orderId);
+                sendEmails(orderId, ORDER_CREATED);
+                break;
+            case "proforma":
+                sendEmails(orderId, ORDER_PROFORMA);
+                break;
+            case "invoice":
+                // sendEmails(orderId, ORDER_INVOICE);
+                logger.warn("Invoice event not implemented yet");
                 break;
             default:
         }
     }
 
-    private void sendEmails(String orderId) {
+    private void sendEmails(String orderId, int eventType) {
         Order order = null;
+        User customer = null;
         try {
             order = billingDao.getOrder(orderId);
         } catch (IotDatabaseException e) {
@@ -120,42 +138,85 @@ public class OrderLogic {
             logger.error("Order not found: " + orderId);
             return;
         }
+        try {
+            customer = userDao.getUser(order.uid);
+        } catch (IotDatabaseException e) {
+            logger.error(e.getMessage());
+        }
+        if (null == customer) {
+            logger.error("User not found: " + order.uid);
+            return;
+        }
+        String orderLanguage = customer.preferredLanguage;
+        if (null == orderLanguage || orderLanguage.isEmpty()) {
+            orderLanguage = "pl";
+        } else {
+            orderLanguage = orderLanguage.toLowerCase();
+        }
 
         Document orderTemplate = null;
         Document proformaTemplate = null;
-        try {
-            if (order.taxNumber == null || order.taxNumber.isEmpty()) {
-                orderTemplate = hcmsService.getDocument(hcmsApiPath + "/pl/" + orderTemplateDocumentPath);
-            } else {
-                //orderTemplate = hcmsService.getDocument(hcmsApiPath + "/pl/" + orderComTemplateDocumentPath);
-                orderTemplate = hcmsService.getDocument(hcmsApiPath + "/pl/" + orderTemplateDocumentPath);
-            }
-            if (null == orderTemplate) {
-                logger.info("Document not found: " + orderTemplateDocumentPath);
-                return;
-            }
-            if (order.taxNumber == null || order.taxNumber.isEmpty()) {
-                proformaTemplate = hcmsService.getDocument(hcmsApiPath + "/pl/" + proformaTemplateDocumentPath);
-            } else {
-                //proformaTemplate = hcmsService.getDocument(hcmsApiPath + "/pl/" + proformaComTemplateDocumentPath);
-                proformaTemplate = hcmsService.getDocument(hcmsApiPath + "/pl/" + proformaTemplateDocumentPath);
-            }
-            if (null == proformaTemplate) {
-                logger.info("Document not found: " + proformaTemplateDocumentPath);
-                return;
-            }
-        } catch (Exception e) {
-            logger.error(e.getMessage());
-        }
+        String providerName = null;
+        String providerTaxNo = null;
+        String providerHomepage = null;
+        String serviceName = null;
+        String providerBank = null;
+        String providerBankAccount = null;
 
-        // get variable values from the document metadata
-        // TODO: move variables to the database
-        String providerName = orderTemplate.metadata.get("providerName");
-        String providerTaxNo = orderTemplate.metadata.get("providerTaxNo");
-        String providerHomepage = orderTemplate.metadata.get("providerHomepage");
-        String serviceName = orderTemplate.metadata.get("serviceName");
-        String providerBank = orderTemplate.metadata.get("providerBank");
-        String providerBankAccount = orderTemplate.metadata.get("providerBankAccount");
+        if (eventType == ORDER_CREATED) {
+            try {
+                if (order.taxNumber == null || order.taxNumber.isEmpty()) {
+                    orderTemplate = hcmsService
+                            .getDocument(hcmsApiPath + "/" + orderLanguage + "/" + orderTemplateDocumentPath);
+                } else {
+                    // orderTemplate = hcmsService.getDocument(hcmsApiPath + "/pl/" +
+                    // orderComTemplateDocumentPath);
+                    orderTemplate = hcmsService
+                            .getDocument(hcmsApiPath + "/" + orderLanguage + "/" + orderTemplateDocumentPath);
+                }
+                if (null == orderTemplate) {
+                    logger.info("Document not found: " + orderTemplateDocumentPath);
+                    return;
+                }
+                // get variable values from the document metadata
+                // TODO: move variables to the database
+                providerName = orderTemplate.metadata.get("providerName");
+                providerTaxNo = orderTemplate.metadata.get("providerTaxNo");
+                providerHomepage = orderTemplate.metadata.get("providerHomepage");
+                serviceName = orderTemplate.metadata.get("serviceName");
+                providerBank = orderTemplate.metadata.get("providerBank");
+                providerBankAccount = orderTemplate.metadata.get("providerBankAccount");
+            } catch (Exception e) {
+                logger.error(e.getMessage());
+            }
+        }
+        if (eventType == ORDER_PROFORMA) {
+            try {
+                if (order.taxNumber == null || order.taxNumber.isEmpty()) {
+                    proformaTemplate = hcmsService
+                            .getDocument(hcmsApiPath + "/" + orderLanguage + "/" + proformaTemplateDocumentPath);
+                } else {
+                    // proformaTemplate = hcmsService.getDocument(hcmsApiPath + "/pl/" +
+                    // proformaComTemplateDocumentPath);
+                    proformaTemplate = hcmsService
+                            .getDocument(hcmsApiPath + "/" + orderLanguage + "/" + proformaTemplateDocumentPath);
+                }
+                if (null == proformaTemplate) {
+                    logger.info("Document not found: " + proformaTemplateDocumentPath);
+                    return;
+                }
+                // get variable values from the document metadata
+                // TODO: move variables to the database
+                providerName = orderTemplate.metadata.get("providerName");
+                providerTaxNo = orderTemplate.metadata.get("providerTaxNo");
+                providerHomepage = orderTemplate.metadata.get("providerHomepage");
+                serviceName = orderTemplate.metadata.get("serviceName");
+                providerBank = orderTemplate.metadata.get("providerBank");
+                providerBankAccount = orderTemplate.metadata.get("providerBankAccount");
+            } catch (Exception e) {
+                logger.error(e.getMessage());
+            }
+        }
 
         Locale locale = new Locale("pl", "PL");
         HashMap<String, String> valueMap = new HashMap<>();
@@ -175,9 +236,9 @@ public class OrderLogic {
         valueMap.put("$COUNTRY$", order.country);
         valueMap.put("$TAX_NO$", order.taxNumber);
         valueMap.put("$SERVICE_TAX$", order.tax);
-        valueMap.put("$SERVICE_PRICE$", "" + formatCurrency(order.price,locale));
-        valueMap.put("$SERVICE_VAT$", "" + formatCurrency(order.vatValue,locale));
-        valueMap.put("$SERVICE_VALUE$", "" + formatCurrency(order.total,locale));
+        valueMap.put("$SERVICE_PRICE$", "" + formatCurrency(order.price, locale));
+        valueMap.put("$SERVICE_VAT$", "" + formatCurrency(order.vatValue, locale));
+        valueMap.put("$SERVICE_VALUE$", "" + formatCurrency(order.total, locale));
         valueMap.put("$SERVICE_VALUE_TEXT$", ValueToTextConverter.getValueAsText(order.total));
         valueMap.put("$PROVIDER_NAME$", providerName);
         valueMap.put("$PROVIDER_TAX_NO$", providerTaxNo);
@@ -186,52 +247,60 @@ public class OrderLogic {
         valueMap.put("$BANK_NAME$", providerBank);
         valueMap.put("$BANK_ACCOUNT$", providerBankAccount);
 
-        String orderMessage = orderTemplate.content;
-        orderMessage = replacePlaceholders(orderMessage, valueMap);
-        String orderSubject = orderTemplate.metadata.get("subject");
-        orderSubject = replacePlaceholders(orderSubject, valueMap);
+        MessageEnvelope envelope;
+        User user;
 
-        // send email with order to service admin
-        MessageEnvelope envelope = new MessageEnvelope();
-        User user = new User();
-        user.email = adminEmail;
-        envelope.message = orderMessage;
-        envelope.subject = orderSubject;
-        envelope.user = user;
-        messagePort.processAdminEmail(envelope);
+        if (eventType == ORDER_CREATED) {
+            String orderMessage = orderTemplate.content;
+            orderMessage = replacePlaceholders(orderMessage, valueMap);
+            String orderSubject = orderTemplate.metadata.get("subject");
+            orderSubject = replacePlaceholders(orderSubject, valueMap);
 
-        // send email with order to client
-        envelope = new MessageEnvelope();
-        user = new User();
-        user.email = order.email;
-        envelope.message = orderMessage;
-        envelope.subject = orderSubject;
-        envelope.user = user;
-        messagePort.processDirectEmail(envelope);
+            // send email with order to service admin
+            envelope = new MessageEnvelope();
+            user = new User();
+            user.email = adminEmail;
+            envelope.message = orderMessage;
+            envelope.subject = orderSubject;
+            envelope.user = user;
+            messagePort.processAdminEmail(envelope);
 
-        // proforma
-        String proformaMessage = proformaTemplate.content;
-        proformaMessage = replacePlaceholders(proformaMessage, valueMap);
-        String proformaSubject = proformaTemplate.metadata.get("subject");
-        proformaSubject = replacePlaceholders(proformaSubject, valueMap);
+            // send email with order to client
+            envelope = new MessageEnvelope();
+            user = new User();
+            user.email = order.email;
+            envelope.message = orderMessage;
+            envelope.subject = orderSubject;
+            envelope.user = user;
+            messagePort.processDirectEmail(envelope);
+        }
 
-        // send email with proforma to client
-        envelope = new MessageEnvelope();
-        user = new User();
-        user.email = order.email;
-        envelope.message = proformaMessage;
-        envelope.subject = proformaSubject;
-        envelope.user = user;
-        messagePort.processDirectEmail(envelope);
+        if (eventType == ORDER_PROFORMA) {
 
-        // send email with proforma to service admin
-        envelope = new MessageEnvelope();
-        user = new User();
-        user.email = adminEmail;
-        envelope.message = proformaMessage;
-        envelope.subject = proformaSubject;
-        envelope.user = user;
-        messagePort.processAdminEmail(envelope);
+            // proforma
+            String proformaMessage = proformaTemplate.content;
+            proformaMessage = replacePlaceholders(proformaMessage, valueMap);
+            String proformaSubject = proformaTemplate.metadata.get("subject");
+            proformaSubject = replacePlaceholders(proformaSubject, valueMap);
+
+            // send email with proforma to client
+            envelope = new MessageEnvelope();
+            user = new User();
+            user.email = order.email;
+            envelope.message = proformaMessage;
+            envelope.subject = proformaSubject;
+            envelope.user = user;
+            messagePort.processDirectEmail(envelope);
+
+            // send email with proforma to service admin
+            envelope = new MessageEnvelope();
+            user = new User();
+            user.email = adminEmail;
+            envelope.message = proformaMessage;
+            envelope.subject = proformaSubject;
+            envelope.user = user;
+            messagePort.processAdminEmail(envelope);
+        }
 
     }
 
@@ -243,14 +312,16 @@ public class OrderLogic {
      */
     private String[] findPlaceholders(String text) {
         // return text.split("\\{(?:...)\\}");
-        /* Pattern p = Pattern.compile("\\{(?:...)\\}");
-        Matcher m = p.matcher(text);
-        List<String> res = new ArrayList<>();
-        while (m.find()) {
-            res.add(m.group(1));
-        }
-        return res.toArray(new String[0]); */
-        //Pattern pattern = Pattern.compile("\\{[^}]*\\}");
+        /*
+         * Pattern p = Pattern.compile("\\{(?:...)\\}");
+         * Matcher m = p.matcher(text);
+         * List<String> res = new ArrayList<>();
+         * while (m.find()) {
+         * res.add(m.group(1));
+         * }
+         * return res.toArray(new String[0]);
+         */
+        // Pattern pattern = Pattern.compile("\\{[^}]*\\}");
         Pattern pattern = Pattern.compile("\\$[^$]*\\$");
         Matcher matcher = pattern.matcher(text);
         List<String> results = new ArrayList<>();
@@ -286,13 +357,13 @@ public class OrderLogic {
         return result;
     }
 
-    private  String formatTimestampToLocalDate(Timestamp timestamp) {
+    private String formatTimestampToLocalDate(Timestamp timestamp) {
         // Konwersja Timestamp na LocalDate
         LocalDate localDate = timestamp.toInstant().atZone(ZoneId.of("Europe/Warsaw")).toLocalDate();
-        
+
         // Definiowanie formatu daty
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy"); // Można dostosować wzorzec formatu
-        
+
         // Formatowanie i zwracanie daty jako String
         return localDate.format(formatter);
     }

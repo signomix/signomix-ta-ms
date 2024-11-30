@@ -1,4 +1,4 @@
-package com.signomix.messaging.domain.deviceCommands;
+package com.signomix.messaging.domain.device;
 
 public class CommandDto {
     public long id;

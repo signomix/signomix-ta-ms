@@ -5,7 +5,7 @@ import com.signomix.messaging.adapter.out.MailerService;
 import com.signomix.messaging.adapter.out.MailingActionRepository;
 import com.signomix.messaging.domain.MailingAction;
 
-public interface MessageProcessorPort {
+public interface MessageProcessorIface {
     public void processMailing(MailingAction action);
     public void processMailing(String docUid, String target);
     //public void processMailing(byte[] bytes);

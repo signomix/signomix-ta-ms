@@ -1,18 +1,5 @@
 package com.signomix.messaging.domain.user;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.Observes;
-import javax.inject.Inject;
-
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
-
 import com.signomix.common.MessageEnvelope;
 import com.signomix.common.User;
 import com.signomix.common.db.AuthDaoIface;
@@ -22,11 +9,20 @@ import com.signomix.common.hcms.Document;
 import com.signomix.common.tsdb.UserDao;
 import com.signomix.messaging.adapter.out.HcmsService;
 import com.signomix.messaging.adapter.out.MessageProcessorAdapter;
-import com.signomix.messaging.application.usecase.ErrorUC;
-
+import com.signomix.messaging.domain.ErrorLogic;
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.agroal.DataSource;
 import io.quarkus.runtime.StartupEvent;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.event.Observes;
+import javax.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.logging.Logger;
 
 @ApplicationScoped
 public class UserLogic {
@@ -43,7 +39,7 @@ public class UserLogic {
     MessageProcessorAdapter messagePort;
 
     @Inject
-    ErrorUC errorUC;
+    ErrorLogic errorUC;
 
     @ConfigProperty(name = "signomix.mqtt.field.separator", defaultValue = ";")
     String mqttFieldSeparator;

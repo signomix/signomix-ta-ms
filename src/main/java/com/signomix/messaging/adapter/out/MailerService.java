@@ -11,7 +11,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 import com.signomix.common.annotation.OutboundAdapter;
-import com.signomix.messaging.NotificationIface;
+import com.signomix.messaging.application.port.out.NotificationIface;
 
 import io.quarkus.mailer.Mail;
 import io.quarkus.mailer.Mailer;

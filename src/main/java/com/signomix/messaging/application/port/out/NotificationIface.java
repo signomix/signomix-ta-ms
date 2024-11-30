@@ -1,4 +1,4 @@
-package com.signomix.messaging;
+package com.signomix.messaging.application.port.out;
 
 import java.util.List;
 

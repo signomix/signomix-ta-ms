@@ -1,15 +1,13 @@
 package com.signomix.messaging.adapter.in;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-
 import com.signomix.common.annotation.InboundAdapter;
 import com.signomix.messaging.adapter.out.MailingActionRepository;
-import com.signomix.messaging.application.port.in.MailingPort;
 import com.signomix.messaging.domain.MailingAction;
-
+import com.signomix.messaging.domain.mailing.MailingLogic;
 import io.quarkus.scheduler.Scheduled;
 import static io.quarkus.scheduler.Scheduled.ConcurrentExecution.SKIP;
+import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
 
 @InboundAdapter
 @ApplicationScoped
@@ -19,7 +17,7 @@ public class SchedulerAdapter {
     MailingActionRepository mailingRepository;
 
     @Inject
-    MailingPort mailingPort;
+    MailingLogic mailingPort;
     
     @Scheduled(every="${com.signomix.messaging.scheduler.every:off}", delayed="60s", concurrentExecution = SKIP)     
     void getMailing() {

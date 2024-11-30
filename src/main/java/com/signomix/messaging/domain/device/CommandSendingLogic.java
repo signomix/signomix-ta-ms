@@ -1,4 +1,4 @@
-package com.signomix.messaging.domain.deviceCommands;
+package com.signomix.messaging.domain.device;
 
 import com.signomix.common.db.IotDatabaseException;
 import com.signomix.common.db.IotDatabaseIface;

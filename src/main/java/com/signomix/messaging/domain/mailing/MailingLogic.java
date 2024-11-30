@@ -1,10 +1,11 @@
-package com.signomix.messaging.application.usecase;
+package com.signomix.messaging.domain.mailing;
 
 import com.signomix.common.db.IotDatabaseIface;
 import com.signomix.common.tsdb.IotDatabaseDao;
 import com.signomix.messaging.adapter.out.MailerService;
 import com.signomix.messaging.adapter.out.MailingActionRepository;
 import com.signomix.messaging.adapter.out.MessageProcessorAdapter;
+import com.signomix.messaging.application.exception.ServiceException;
 import com.signomix.messaging.domain.MailingAction;
 import com.signomix.messaging.domain.Status;
 import io.agroal.api.AgroalDataSource;
@@ -17,14 +18,13 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
-
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
 
 @ApplicationScoped
-public class MailingUC {
-    private static final Logger LOG = Logger.getLogger(MqttLogic.class);
+public class MailingLogic {
+    private static final Logger LOG = Logger.getLogger(MailingLogic.class);
 
     @Inject
     @DataSource("oltp")
@@ -105,6 +105,18 @@ public class MailingUC {
         messageAdapter.processMailing(mailingAction);
     }
 
+    public void runMailingAction(MailingAction mailingAction){
+        messageAdapter.processMailing(mailingAction);
+    }
+
+    public void addPlannedMailing(String docUid, String target, String sessionToken) throws ServiceException {
+/*         User actor = athUC.getUserForToken(sessionToken);
+        if(null==actor || !actor.role.contains("admin")){
+            throw new ServiceException(unauthorized);
+        }
+        mailingUseCase.addPlannedMailing(docUid, target); */
+    }
+
     /* public void processMailing(byte[] bytes) {
         messageAdapter.processMailing(bytes);
     } */
@@ -117,8 +129,8 @@ public class MailingUC {
         messageAdapter.processAdminEmail(bytes);
     }
 
-    public void processNotification(byte[] bytes) {
+/*     public void processNotification(byte[] bytes) {
         messageAdapter.processNotification(bytes);
-    }
+    } */
 
 }
