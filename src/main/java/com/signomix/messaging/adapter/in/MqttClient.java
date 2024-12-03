@@ -71,6 +71,7 @@ public class MqttClient {
             orderLogic.processOrderEvent(msg);
         } catch (Exception e) {
             logger.error("Error processing order event: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

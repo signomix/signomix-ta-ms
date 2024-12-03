@@ -8,8 +8,6 @@ import com.signomix.common.User;
 import com.signomix.common.db.IotDatabaseIface;
 import com.signomix.common.hcms.Document;
 import com.signomix.common.iot.Device;
-import com.signomix.common.proprietary.AccountTypesIface;
-import com.signomix.common.proprietary.ExtensionConfig;
 import com.signomix.messaging.application.port.out.MessageProcessorIface;
 import com.signomix.messaging.domain.AuthLogic;
 import com.signomix.messaging.domain.MailingAction;
@@ -17,20 +15,16 @@ import com.signomix.messaging.domain.Message;
 import com.signomix.messaging.domain.SmsPlanetResponse;
 import com.signomix.messaging.domain.Status;
 import com.signomix.messaging.domain.device.DeviceLogic;
+import com.signomix.messaging.domain.user.UserLogic;
 import com.signomix.messaging.webhook.WebhookService;
 import com.signomix.proprietary.ExtensionPoints;
-
-import io.quarkus.runtime.StartupEvent;
-
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
 import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.jboss.logging.Logger;
-import com.signomix.common.proprietary.*;
 
 @ApplicationScoped
 public class MessageProcessorAdapter implements MessageProcessorIface {
@@ -49,6 +43,9 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
 
     @Inject
     DeviceLogic deviceUC;
+
+    @Inject
+    UserLogic userLogic;
 
     // @RestClient
     // @Inject
@@ -170,7 +167,7 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
                             break;
                         case "SMS":
                             // check user credits if required
-                            if (ExtensionPoints.isControlled() && user.credits < 0) {
+                            if (ExtensionPoints.isControlled() && userLogic.getServicePoints(user.uid) <= 0) {
                                 LOG.warn("User has no credits: " + user.uid);
                                 return;
                             }
@@ -309,7 +306,7 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
                                 new Message(wrapper.eui, wrapper.message, wrapper.subject));
                         break;
                     case "SMS":
-                        if (ExtensionPoints.isControlled() && user.credits < 0) {
+                        if (ExtensionPoints.isControlled() && userLogic.getServicePoints(user.uid) <= 0) {
                             LOG.warn("User has no credits: " + user.uid);
                             return;
                         }

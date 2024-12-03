@@ -71,6 +71,7 @@ public class OrderLogic {
     String orderTemplateDocumentPath;
     @ConfigProperty(name = "signomix.hcms.order-com-template.html", defaultValue = "order-com-template.html")
     String orderComTemplateDocumentPath;
+
     @ConfigProperty(name = "signomix.hcms.proforma-template.html", defaultValue = "proforma-template.html")
     String proformaTemplateDocumentPath;
     @ConfigProperty(name = "signomix.hcms.proforma-com-template.html", defaultValue = "proforma-com-template.html")
@@ -172,10 +173,10 @@ public class OrderLogic {
                     // orderTemplate = hcmsService.getDocument(hcmsApiPath + "/pl/" +
                     // orderComTemplateDocumentPath);
                     orderTemplate = hcmsService
-                            .getDocument(hcmsApiPath + "/" + orderLanguage + "/" + orderTemplateDocumentPath);
+                            .getDocument(hcmsApiPath + "/" + orderLanguage + "/" + orderComTemplateDocumentPath);
                 }
                 if (null == orderTemplate) {
-                    logger.info("Document not found: " + orderTemplateDocumentPath);
+                    logger.error("Document not found: " + orderTemplateDocumentPath);
                     return;
                 }
                 // get variable values from the document metadata
@@ -199,20 +200,20 @@ public class OrderLogic {
                     // proformaTemplate = hcmsService.getDocument(hcmsApiPath + "/pl/" +
                     // proformaComTemplateDocumentPath);
                     proformaTemplate = hcmsService
-                            .getDocument(hcmsApiPath + "/" + orderLanguage + "/" + proformaTemplateDocumentPath);
+                            .getDocument(hcmsApiPath + "/" + orderLanguage + "/" + proformaComTemplateDocumentPath);
                 }
                 if (null == proformaTemplate) {
-                    logger.info("Document not found: " + proformaTemplateDocumentPath);
+                    logger.error("Document not found: " + proformaTemplateDocumentPath);
                     return;
                 }
                 // get variable values from the document metadata
                 // TODO: move variables to the database
-                providerName = orderTemplate.metadata.get("providerName");
-                providerTaxNo = orderTemplate.metadata.get("providerTaxNo");
-                providerHomepage = orderTemplate.metadata.get("providerHomepage");
-                serviceName = orderTemplate.metadata.get("serviceName");
-                providerBank = orderTemplate.metadata.get("providerBank");
-                providerBankAccount = orderTemplate.metadata.get("providerBankAccount");
+                providerName = proformaTemplate.metadata.get("providerName");
+                providerTaxNo = proformaTemplate.metadata.get("providerTaxNo");
+                providerHomepage = proformaTemplate.metadata.get("providerHomepage");
+                serviceName = proformaTemplate.metadata.get("serviceName");
+                providerBank = proformaTemplate.metadata.get("providerBank");
+                providerBankAccount = proformaTemplate.metadata.get("providerBankAccount");
             } catch (Exception e) {
                 logger.error(e.getMessage());
             }
@@ -227,14 +228,15 @@ public class OrderLogic {
         valueMap.put("$DATE$", formatTimestampToLocalDate(order.createdAt));
         valueMap.put("$LOGIN$", order.uid);
         valueMap.put("$COMPANY$", order.companyName);
+        valueMap.put("$CUSTOMER$", order.companyName);
         valueMap.put("$NAME$", order.name);
         valueMap.put("$SURNAME$", order.surname);
         valueMap.put("$EMAIL$", order.email);
         valueMap.put("$ADDRESS$", order.address);
         valueMap.put("$CITY$", order.city);
         valueMap.put("$ZIP$", order.zip);
-        valueMap.put("$COUNTRY$", order.country);
-        valueMap.put("$TAX_NO$", order.taxNumber);
+        valueMap.put("$COUNTRY$", getCountryName(order.country, orderLanguage));
+        valueMap.put("$CUSTOMER_TAX_NO$", order.taxNumber);
         valueMap.put("$SERVICE_TAX$", order.tax);
         valueMap.put("$SERVICE_PRICE$", "" + formatCurrency(order.price, locale));
         valueMap.put("$SERVICE_VAT$", "" + formatCurrency(order.vatValue, locale));
@@ -371,6 +373,129 @@ public class OrderLogic {
     private String formatCurrency(double amount, Locale locale) {
         NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(locale);
         return currencyFormatter.format(amount);
+    }
+
+    private String getCountryName(String englishName, String languageCode) {
+        if (languageCode.equalsIgnoreCase("pl")) {
+            switch (englishName) {
+                case "austria":
+                    return "Austria";
+                case "belgium":
+                    return "Belgia";
+                case "bulgaria":
+                    return "Bułgaria";
+                case "croatia":
+                    return "Chorwacja";
+                case "cyprus":
+                    return "Cypr";
+                case "czech republic":
+                    return "Czechy";
+                case "denmark":
+                    return "Dania";
+                case "estonia":
+                    return "Estonia";
+                case "finland":
+                    return "Finlandia";
+                case "france":
+                    return "Francja";
+                case "greece":
+                    return "Grecja";
+                case "spain":
+                    return "Hiszpania";
+                case "the netherlands":
+                    return "Holandia";
+                case "ireland":
+                    return "Irlandia";
+                case "lithuania":
+                    return "Litwa";
+                case "luxembourg":
+                    return "Luksemburg";
+                case "latvia":
+                    return "Łotwa";
+                case "malta":
+                    return "Malta";
+                case "germany":
+                    return "Niemcy";
+                case "poland":
+                    return "Polska";
+                case "portugal":
+                    return "Portugalia";
+                case "romania":
+                    return "Rumunia";
+                case "slovakia":
+                    return "Słowacja";
+                case "slovenia":
+                    return "Słowenia";
+                case "sweden":
+                    return "Szwecja";
+                case "hungary":
+                    return "Węgry";
+                case "italy":
+                    return "Włochy";
+                default:
+                    return englishName;
+            }
+        } else {
+            switch (languageCode) {
+                case "austria":
+                    return "Austria";
+                case "belgium":
+                    return "Belgium";
+                case "bulgaria":
+                    return "Bulgaria";
+                case "croatia":
+                    return "Croatia";
+                case "cyprus":
+                    return "Cyprus";
+                case "czech republic":
+                    return "Czech Republic";
+                case "denmark":
+                    return "Denmark";
+                case "estonia":
+                    return "Estonia";
+                case "finland":
+                    return "Finland";
+                case "france":
+                    return "France";
+                case "greece":
+                    return "Greece";
+                case "spain":
+                    return "Spain";
+                case "the netherlands":
+                    return "The Netherlands";
+                case "ireland":
+                    return "Ireland";
+                case "lithuania":
+                    return "Lithuania";
+                case "luxembourg":
+                    return "Luxembourg";
+                case "latvia":
+                    return "Latvia";
+                case "malta":
+                    return "Malta";
+                case "germany":
+                    return "Germany";
+                case "poland":
+                    return "Poland";
+                case "portugal":
+                    return "Portugal";
+                case "romania":
+                    return "Romania";
+                case "slovakia":
+                    return "Slovakia";
+                case "slovenia":
+                    return "Slovenia";
+                case "sweden":
+                    return "Sweden";
+                case "hungary":
+                    return "Hungary";
+                case "italy":
+                    return "Italy";
+                default:
+                    return englishName;
+            }
+        }
+
     }
 
 }
