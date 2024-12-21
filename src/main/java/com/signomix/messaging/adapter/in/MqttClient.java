@@ -1,14 +1,16 @@
 package com.signomix.messaging.adapter.in;
 
+import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
+
+import org.eclipse.microprofile.reactive.messaging.Incoming;
+import org.jboss.logging.Logger;
+
 import com.signomix.messaging.domain.data.DataLogic;
 import com.signomix.messaging.domain.device.CommandSendingLogic;
 import com.signomix.messaging.domain.notification.NotificationLogic;
 import com.signomix.messaging.domain.order.OrderLogic;
 import com.signomix.messaging.domain.user.UserLogic;
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import org.eclipse.microprofile.reactive.messaging.Incoming;
-import org.jboss.logging.Logger;
 
 @ApplicationScoped
 public class MqttClient {
@@ -75,7 +77,7 @@ public class MqttClient {
         }
     }
 
-    @Incoming("device-commands")
+    @Incoming("devicecommands")
     public void processSendDeviceCommands(byte[] bytes) {
         try {
             logger.info("Send device commands event: " + new String(bytes));
