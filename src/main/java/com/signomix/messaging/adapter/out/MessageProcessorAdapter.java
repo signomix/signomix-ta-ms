@@ -1,5 +1,15 @@
 package com.signomix.messaging.adapter.out;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import java.util.List;
+
+import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
+
+import org.eclipse.microprofile.config.ConfigProvider;
+import org.jboss.logging.Logger;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.signomix.common.EventEnvelope;
@@ -18,13 +28,6 @@ import com.signomix.messaging.domain.device.DeviceLogic;
 import com.signomix.messaging.domain.user.UserLogic;
 import com.signomix.messaging.webhook.WebhookService;
 import com.signomix.proprietary.ExtensionPoints;
-import java.nio.charset.StandardCharsets;
-import java.util.Date;
-import java.util.List;
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import org.eclipse.microprofile.config.ConfigProvider;
-import org.jboss.logging.Logger;
 
 @ApplicationScoped
 public class MessageProcessorAdapter implements MessageProcessorIface {
@@ -265,6 +268,22 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
         }
     }
 
+    public void processEmailMessage(byte[] bytes) {
+        try {
+            int index0, index1;
+            String message = new String(bytes, StandardCharsets.UTF_8);
+            index0 = message.indexOf("\n");
+            index1 = message.indexOf("\n", index0 + 1);
+            String email=message.substring(0, index0);
+            String subject=message.substring(index0+1, index1);
+            String content=message.substring(index1+1);
+            processDirectEmail(email, subject, content);
+        } catch (Exception e) {
+            LOG.error(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     private void processNotification(MessageEnvelope wrapper) {
         String address = null;
         String messageChannel = null;
@@ -446,6 +465,11 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
     public void processDirectEmail(MessageEnvelope wrapper) {
         LOG.debug("DIRECT_EMAIL");
         mailerService.sendEmail(wrapper.user.email, wrapper.subject, wrapper.message, null);
+    }
+
+    private void processDirectEmail(String email, String subject, String message) {
+        LOG.debug("DIRECT_EMAIL");
+        mailerService.sendEmail(email, subject, message, null);
     }
 
     private void processWelcomeEmail(MessageEnvelope wrapper) {

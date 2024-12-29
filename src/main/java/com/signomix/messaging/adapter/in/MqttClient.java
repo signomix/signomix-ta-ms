@@ -97,6 +97,16 @@ public class MqttClient {
         }
     }
 
+    @Incoming("email")
+    public void processEmailMessage(byte[] bytes) {
+        try {
+            logger.debug("E-mail message received (MQTT): " + new String(bytes));
+            notificationLogic.processEmailMessage(bytes);
+        } catch (Exception e) {
+            logger.error("Error processing notification: " + e.getMessage());
+        }
+    }
+
     @Incoming("adminemail")
     public void processAdminEmail(byte[] bytes) {
         try {

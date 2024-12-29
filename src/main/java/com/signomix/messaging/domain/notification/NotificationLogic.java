@@ -1,9 +1,11 @@
 package com.signomix.messaging.domain.notification;
 
-import com.signomix.messaging.adapter.out.MessageProcessorAdapter;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
+
 import org.jboss.logging.Logger;
+
+import com.signomix.messaging.adapter.out.MessageProcessorAdapter;
 
 @ApplicationScoped
 public class NotificationLogic {
@@ -22,6 +24,10 @@ public class NotificationLogic {
 
     public void processNotification(byte[] bytes) {
         messagePort.processNotification(bytes);
+    }
+
+    public void processEmailMessage(byte[] bytes) {
+        messagePort.processEmailMessage(bytes);
     }
 
     public void processAlert(byte[] bytes) {
