@@ -18,7 +18,7 @@ public class ErrorLogic {
     String adminEmail;
 
     public void processError(String subject, String message) {
-        mailerService.sendEmail(adminEmail, subject, message, null);
+        mailerService.sendEmail(adminEmail, subject, message, null, null);
     }
 
 }

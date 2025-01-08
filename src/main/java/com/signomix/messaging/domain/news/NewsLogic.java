@@ -195,7 +195,7 @@ public class NewsLogic {
             }
             logger.info("subject: " + subject);
             logger.info("content: " + doc.content);
-            mailerService.sendHtmlEmail(user.email, subject, doc.content, null);
+            mailerService.sendHtmlEmail(user.email, subject, doc.content, null, null);
         } catch (IotDatabaseException e) {
             logger.warn("Error getting user: " + uid);
         }
@@ -269,13 +269,13 @@ public class NewsLogic {
                 }
                 counter++;
                 if (counter > maxCounter) {
-                    mailerService.sendHtmlEmail(adminEmail, subject, doc.content, emails);
+                    mailerService.sendHtmlEmail(adminEmail, subject, doc.content, emails, null);
                     emails.clear();
                     counter = 0;
                 }
             }
             if (!emails.isEmpty()) {
-                mailerService.sendHtmlEmail(adminEmail, subject, doc.content, emails);
+                mailerService.sendHtmlEmail(adminEmail, subject, doc.content, emails, null);
             }
         }
 

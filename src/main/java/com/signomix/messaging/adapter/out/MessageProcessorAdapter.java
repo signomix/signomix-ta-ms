@@ -162,7 +162,7 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
                             if (null == messageSubject || messageSubject.isEmpty()) {
                                 messageSubject = "Signomix notification";
                             }
-                            mailerService.sendEmail(address, messageSubject, messageText, null);
+                            mailerService.sendEmail(address, messageSubject, messageText, null, null);
                             break;
                         case "WEBHOOK":
                             LOG.info("sending with WEBHOOK");
@@ -210,7 +210,7 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
                 return;
             }
         }
-        mailerService.sendEmail(emailAddress, wrapper.subject, wrapper.message, null);
+        mailerService.sendEmail(emailAddress, wrapper.subject, wrapper.message, null, null);
     }
 
     @Override
@@ -234,7 +234,7 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
                 return;
             }
         }
-        mailerService.sendEmail(emailAddress, wrapper.subject, wrapper.message, null);
+        mailerService.sendEmail(emailAddress, wrapper.subject, wrapper.message, null, null);
     }
 
     @Override
@@ -270,14 +270,16 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
 
     public void processEmailMessage(byte[] bytes) {
         try {
-            int index0, index1;
+            int index0, index1, index2;
             String message = new String(bytes, StandardCharsets.UTF_8);
-            index0 = message.indexOf("\n");
-            index1 = message.indexOf("\n", index0 + 1);
+            index0 = message.indexOf("\n"); // email
+            index1 = message.indexOf("\n", index0 + 1); // subject
+            index2 = message.indexOf("\n", index1 + 1); // attachment file name
             String email=message.substring(0, index0);
             String subject=message.substring(index0+1, index1);
-            String content=message.substring(index1+1);
-            processDirectEmail(email, subject, content);
+            String fileName = message.substring(index1+1, index2);
+            String content=message.substring(index2+1);
+            processDirectEmail(email, subject, content, fileName);
         } catch (Exception e) {
             LOG.error(e.getMessage());
             e.printStackTrace();
@@ -315,9 +317,9 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
                 switch (messageChannel.toUpperCase()) {
                     case "SMTP":
                         if (null == wrapper.subject || wrapper.subject.isEmpty()) {
-                            mailerService.sendEmail(address, wrapper.eui, wrapper.message, null);
+                            mailerService.sendEmail(address, wrapper.eui, wrapper.message, null, null);
                         } else {
-                            mailerService.sendEmail(address, wrapper.subject, wrapper.message, null);
+                            mailerService.sendEmail(address, wrapper.subject, wrapper.message, null, null);
                         }
                         break;
                     case "WEBHOOK":
@@ -425,7 +427,7 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
                     }
                     break;
             }
-            mailerService.sendHtmlEmail(user.email, subject, content, null);
+            mailerService.sendHtmlEmail(user.email, subject, content, null, null);
         }
         action.setFinishedAt(new Date());
         action.setStatus(Status.Finished);
@@ -464,12 +466,12 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
 
     public void processDirectEmail(MessageEnvelope wrapper) {
         LOG.debug("DIRECT_EMAIL");
-        mailerService.sendEmail(wrapper.user.email, wrapper.subject, wrapper.message, null);
+        mailerService.sendEmail(wrapper.user.email, wrapper.subject, wrapper.message, null, null);
     }
 
-    private void processDirectEmail(String email, String subject, String message) {
+    private void processDirectEmail(String email, String subject, String message, String fileName) {
         LOG.debug("DIRECT_EMAIL");
-        mailerService.sendEmail(email, subject, message, null);
+        mailerService.sendEmail(email, subject, message, null, fileName);
     }
 
     private void processWelcomeEmail(MessageEnvelope wrapper) {
@@ -530,8 +532,8 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
         content = content.replaceFirst("\\$user.name", user.name);
         content = content.replaceFirst("\\$user.surname", user.surname);
         content = content.replaceFirst("\\$user.uid", user.uid);
-        mailerService.sendEmail(user.email, subject, content, null);
-        mailerService.sendEmail(user.email, subject, content, null);
+        mailerService.sendEmail(user.email, subject, content, null, null);
+        mailerService.sendEmail(user.email, subject, content, null, null); ;
     }
 
     private User getUser(User user) {

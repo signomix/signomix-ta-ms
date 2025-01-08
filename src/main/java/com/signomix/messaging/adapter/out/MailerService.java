@@ -32,19 +32,25 @@ public class MailerService implements NotificationIface {
     }
 
     @Override
-    public String sendEmail(String toAddress, String subject, String body, List<String> bcc) {
+    public String sendEmail(String toAddress, String subject, String body, List<String> bcc, String fileName) {
         LOG.debug("sendEmail1: " + toAddress + " " + subject);
-        new Thread(() -> sendInThread(toAddress, subject, body)).start();
+        new Thread(() -> sendInThread(toAddress, subject, body, fileName)).start();
         return "OK";
     }
 
     @Override
-    public String sendHtmlEmail(String toAddress, String subject, String body, List<String> bcc) {
+    public String sendHtmlEmail(String toAddress, String subject, String body, List<String> bcc, String fileName) {
         try {
             LOG.debug("sendEmail3: " + toAddress + " " + subject);
             String[] r = toAddress.split(",");
             ArrayList<String> recipients = new ArrayList<>(Arrays.asList(r));
-            Mail mail = Mail.withHtml(recipients.get(0).trim(), subject, body);
+            String contentType = getContentType(fileName);
+            Mail mail;
+            if(contentType.isEmpty()){
+                mail = Mail.withHtml(recipients.get(0).trim(), subject, body);
+            }else{
+                mail = Mail.withHtml(recipients.get(0).trim(), subject, "").addAttachment(fileName, body.getBytes(),  contentType);
+            }
             for (int i = 1; i < recipients.size(); i++) {
                 mail = mail.addTo(recipients.get(i).trim());
             }
@@ -59,12 +65,18 @@ public class MailerService implements NotificationIface {
     }
 
 
-    private void sendInThread(String toAddress, String subject, String body){
+    private void sendInThread(String toAddress, String subject, String body, String fileName) {
         try {
             LOG.debug("sendEmail2: " + toAddress + " " + subject);
             String[] r = toAddress.split(",");
             ArrayList<String> recipients = new ArrayList<>(Arrays.asList(r));
-            Mail mail = Mail.withHtml(recipients.get(0).trim(), subject, body);
+            String contentType = getContentType(fileName);
+            Mail mail;
+            if(contentType.isEmpty()){
+                mail = Mail.withHtml(recipients.get(0).trim(), subject, body);
+            }else{
+                mail = Mail.withHtml(recipients.get(0).trim(), subject, "").addAttachment(fileName, body.getBytes(),  contentType);
+            }
             for (int i = 1; i < recipients.size(); i++) {
                 mail = mail.addTo(recipients.get(i).trim());
             }
@@ -102,5 +114,24 @@ public class MailerService implements NotificationIface {
     public String getChatID(String recipent) {
         throw new UnsupportedOperationException("Not supported yet."); // To change body of generated methods, choose
                                                                        // Tools | Templates.
+    }
+
+    /**
+     * Get content type based on file extension
+     * 
+     * @param fileName
+     * @return content type
+     */
+    private String getContentType(String fileName) {
+        if (fileName == null) {
+            return "";
+        }
+        if (fileName.toLowerCase().endsWith(".csv")) {
+            return "text/csv";
+        }
+        if (fileName.toLowerCase().endsWith(".html")) {
+            return "text/html";
+        }
+        return "";
     }
 }
