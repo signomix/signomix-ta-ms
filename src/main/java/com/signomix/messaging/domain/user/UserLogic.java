@@ -20,6 +20,7 @@ import com.signomix.common.db.BillingDaoIface;
 import com.signomix.common.db.IotDatabaseException;
 import com.signomix.common.db.UserDaoIface;
 import com.signomix.common.hcms.Document;
+import com.signomix.common.tsdb.BillingDao;
 import com.signomix.common.tsdb.UserDao;
 import com.signomix.messaging.adapter.out.HcmsService;
 import com.signomix.messaging.adapter.out.MessageProcessorAdapter;
@@ -97,6 +98,9 @@ public class UserLogic {
     @Inject
     @DataSource("user")
     AgroalDataSource userDataSource;
+    @Inject
+    @DataSource("billing")
+    AgroalDataSource billingDataSource;
 
     AuthDaoIface dao;
     UserDaoIface userDao;
@@ -108,6 +112,8 @@ public class UserLogic {
     void onStart(@Observes StartupEvent ev) {
         userDao = new UserDao();
         userDao.setDatasource(userDataSource);
+        billingDao = new BillingDao();
+        billingDao.setDatasource(billingDataSource);
     }
 
     public void processUserEvent(String message) {
