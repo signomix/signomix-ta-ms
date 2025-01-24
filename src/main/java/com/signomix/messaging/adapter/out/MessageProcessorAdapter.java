@@ -16,6 +16,7 @@ import com.signomix.common.EventEnvelope;
 import com.signomix.common.MessageEnvelope;
 import com.signomix.common.User;
 import com.signomix.common.db.IotDatabaseIface;
+import com.signomix.common.event.IotEvent;
 import com.signomix.common.hcms.Document;
 import com.signomix.common.iot.Device;
 import com.signomix.messaging.application.port.out.MessageProcessorIface;
@@ -56,6 +57,9 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
 
     @Inject
     SmsplanetService smsService;
+
+    String[] prefixes = { "+48" }; // accepted phone prefixes
+    // TODO: move accepted phone prefixes to application.properties (or database)
 
     // @ConfigProperty(name = "signomix.smsplanet.key", defaultValue = "")
     // String smsKey;
@@ -169,6 +173,14 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
                             new WebhookService().send(address, new Message(deviceEui, messageText, messageSubject));
                             break;
                         case "SMS":
+                            if (user.phonePrefix == null || user.phonePrefix.isEmpty()) {
+                                LOG.warn("Phone prefix not set: " + user.uid);
+                                return;
+                            }
+                            if (!isPhonePrefixAccepted(user.phonePrefix)) {
+                                LOG.warn("Phone prefix not accepted: " + user.phonePrefix);
+                                return;
+                            }
                             // check user credits if required
                             if (ExtensionPoints.isControlled() && userLogic.getServicePoints(user.uid) <= 0) {
                                 LOG.warn("User has no credits: " + user.uid);
@@ -178,12 +190,7 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
                                 LOG.warn("SMS address is empty; " + user.uid);
                                 return;
                             }
-                            String phoneNumber;
-                            if (user.phonePrefix != null && !user.phonePrefix.isEmpty()) {
-                                phoneNumber = user.phonePrefix + address;
-                            } else {
-                                phoneNumber = address;
-                            }
+                            String phoneNumber = user.phonePrefix + address;
                             smsService.send(
                                     phoneNumber,
                                     new Message(userId, messageText, messageSubject),
@@ -242,12 +249,23 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
         try {
             String message = new String(bytes, StandardCharsets.UTF_8);
             LOG.debug(message);
-            MessageEnvelope wrapper;
+            IotEvent event = null;
+            MessageEnvelope wrapper = null;
             ObjectMapper objectMapper = new ObjectMapper();
+            // try{
+            // event = objectMapper.readValue(message, IotEvent.class);
+            // } catch (JsonProcessingException ex) {
+            // LOG.error(ex.getMessage());
+            // }
             try {
                 wrapper = objectMapper.readValue(message, MessageEnvelope.class);
             } catch (JsonProcessingException ex) {
                 LOG.error(ex.getMessage());
+            }
+            // LOG.info("processing event: " + event);
+            LOG.info("processing wrapper: " + wrapper);
+            if (null == event && null == wrapper) {
+                LOG.error("event and wrapper are null");
                 return;
             }
             if ("DIRECT_EMAIL".equalsIgnoreCase(wrapper.type) || "MIAILING".equalsIgnoreCase(wrapper.type)) {
@@ -275,10 +293,10 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
             index0 = message.indexOf("\n"); // email
             index1 = message.indexOf("\n", index0 + 1); // subject
             index2 = message.indexOf("\n", index1 + 1); // attachment file name
-            String email=message.substring(0, index0);
-            String subject=message.substring(index0+1, index1);
-            String fileName = message.substring(index1+1, index2);
-            String content=message.substring(index2+1);
+            String email = message.substring(0, index0);
+            String subject = message.substring(index0 + 1, index1);
+            String fileName = message.substring(index1 + 1, index2);
+            String content = message.substring(index2 + 1);
             processDirectEmail(email, subject, content, fileName);
         } catch (Exception e) {
             LOG.error(e.getMessage());
@@ -286,69 +304,158 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
         }
     }
 
+    private void processNotification(IotEvent event) {
+        String address = null;
+        String messageChannel = null;
+        String[] parts = event.getOrigin().split("\t");
+        String[] users = parts[0].split(";");
+        String eui = parts[1];
+        String message = (String) event.getPayload();
+
+        for (int j = 0; j < users.length; j++) {
+            User user = getUser(users[j]);
+            Device device = getDevice(eui);
+            if (sendDeviceDefined(device, event)) {
+                // sendDeviceDefined(device, wrapper) is not implemented yet
+                return;
+            }
+            String[] channelConfig = user.getChannelConfig(event.getType());
+            if (channelConfig == null || channelConfig.length < 2) {
+                LOG.debug("Channel not configured " + event.getType() + " " + channelConfig.length);
+            } else {
+                LOG.debug(channelConfig[0] + " " + channelConfig[1]);
+                messageChannel = channelConfig[0];
+                if (channelConfig.length == 2) {
+                    address = channelConfig[1];
+                } else {
+                    // in case when address has ':'
+                    address = "";
+                    for (int i = 1; i < channelConfig.length - 1; i++) {
+                        address = address + channelConfig[i] + ":";
+                    }
+                    address = address + channelConfig[channelConfig.length - 1];
+                }
+
+                if (null != address && !address.isEmpty()) {
+                    switch (messageChannel.toUpperCase()) {
+                        case "SMTP":
+                            // if (null == event.subject || event.subject.isEmpty()) {
+                            mailerService.sendEmail(address, eui, message, null, null);
+                            // } else {
+                            // mailerService.sendEmail(address, event.subject, message, null, null);
+                            // }
+                            break;
+                        case "WEBHOOK":
+                            new WebhookService().send(address,
+                                    new Message(eui, message, event.getType()));
+                            break;
+                        case "SMS":
+                            if (user.phonePrefix == null || user.phonePrefix.isEmpty()) {
+                                LOG.warn("Phone prefix not set: " + user.uid);
+                                return;
+                            }
+                            if (!isPhonePrefixAccepted(user.phonePrefix)) {
+                                LOG.warn("Phone prefix not accepted: " + user.phonePrefix);
+                                return;
+                            }
+                            if (ExtensionPoints.isControlled() && userLogic.getServicePoints(user.uid) <= 0) {
+                                LOG.warn("User has no credits: " + user.uid);
+                                return;
+                            }
+                            if (address == null || address.trim().isEmpty()) {
+                                LOG.warn("SMS address is empty; " + user.uid);
+                                return;
+                            }
+                            String phoneNumber = user.phonePrefix.trim() + address;
+                            SmsPlanetResponse response = smsService.send(
+                                    phoneNumber,
+                                    new Message(user.uid, message, event.getType()),
+                                    false);
+                            break;
+
+                        default:
+                            LOG.warnf("Unsupported message type %1s", event.getType());
+                    }
+                }
+            }
+        }
+    }
+
     private void processNotification(MessageEnvelope wrapper) {
         String address = null;
         String messageChannel = null;
-        User user = getUser(wrapper.user);
-        Device device = getDevice(wrapper.eui);
-
-        if (sendDeviceDefined(device, wrapper)) {
-            // sendDeviceDefined(device, wrapper) is not implemented yet
+        String[] users = null;
+        try {
+            users = wrapper.userIds.split(";");
+        } catch (Exception e) {
+            LOG.error(e.getMessage());
+            e.printStackTrace();
             return;
         }
-        String[] channelConfig = user.getChannelConfig(wrapper.type);
-        if (channelConfig == null || channelConfig.length < 2) {
-            LOG.debug("Channel not configured " + wrapper.type + " " + channelConfig.length);
-        } else {
-            LOG.debug(channelConfig[0] + " " + channelConfig[1]);
-            messageChannel = channelConfig[0];
-            if (channelConfig.length == 2) {
-                address = channelConfig[1];
-            } else {
-                // in case when address has ':'
-                address = "";
-                for (int i = 1; i < channelConfig.length - 1; i++) {
-                    address = address + channelConfig[i] + ":";
-                }
-                address = address + channelConfig[channelConfig.length - 1];
+        for (int j = 0; j < users.length; j++) {
+            User user = getUser(users[j]);
+            Device device = getDevice(wrapper.eui);
+            if (sendDeviceDefined(device, wrapper)) {
+                // sendDeviceDefined(device, wrapper) is not implemented yet
+                return;
             }
+            String[] channelConfig = user.getChannelConfig(wrapper.type);
+            if (channelConfig == null || channelConfig.length < 2) {
+                LOG.debug("Channel not configured " + wrapper.type + " " + channelConfig.length);
+            } else {
+                LOG.debug(channelConfig[0] + " " + channelConfig[1]);
+                messageChannel = channelConfig[0];
+                if (channelConfig.length == 2) {
+                    address = channelConfig[1];
+                } else {
+                    // in case when address has ':'
+                    address = "";
+                    for (int i = 1; i < channelConfig.length - 1; i++) {
+                        address = address + channelConfig[i] + ":";
+                    }
+                    address = address + channelConfig[channelConfig.length - 1];
+                }
 
-            if (null != address && !address.isEmpty()) {
-                switch (messageChannel.toUpperCase()) {
-                    case "SMTP":
-                        if (null == wrapper.subject || wrapper.subject.isEmpty()) {
-                            mailerService.sendEmail(address, wrapper.eui, wrapper.message, null, null);
-                        } else {
-                            mailerService.sendEmail(address, wrapper.subject, wrapper.message, null, null);
-                        }
-                        break;
-                    case "WEBHOOK":
-                        new WebhookService().send(address,
-                                new Message(wrapper.eui, wrapper.message, wrapper.subject));
-                        break;
-                    case "SMS":
-                        if (ExtensionPoints.isControlled() && userLogic.getServicePoints(user.uid) <= 0) {
-                            LOG.warn("User has no credits: " + user.uid);
-                            return;
-                        }
-                        if (address == null || address.trim().isEmpty()) {
-                            LOG.warn("SMS address is empty; " + user.uid);
-                            return;
-                        }
-                        String phoneNumber;
-                        if (user.phonePrefix != null && !user.phonePrefix.isEmpty()) {
-                            phoneNumber = user.phonePrefix.trim() + address;
-                        } else {
-                            phoneNumber = address;
-                        }
-                        SmsPlanetResponse response = smsService.send(
-                                phoneNumber,
-                                new Message(user.uid, wrapper.type + ": " + wrapper.message, wrapper.type),
-                                false);
-                        break;
+                if (null != address && !address.isEmpty()) {
+                    switch (messageChannel.toUpperCase()) {
+                        case "SMTP":
+                            if (null == wrapper.subject || wrapper.subject.isEmpty()) {
+                                mailerService.sendEmail(address, wrapper.eui, wrapper.message, null, null);
+                            } else {
+                                mailerService.sendEmail(address, wrapper.subject, wrapper.message, null, null);
+                            }
+                            break;
+                        case "WEBHOOK":
+                            new WebhookService().send(address,
+                                    new Message(wrapper.eui, wrapper.message, wrapper.subject));
+                            break;
+                        case "SMS":
+                            if (user.phonePrefix == null || user.phonePrefix.isEmpty()) {
+                                LOG.warn("Phone prefix not set: " + user.uid);
+                                return;
+                            }
+                            if (!isPhonePrefixAccepted(user.phonePrefix)) {
+                                LOG.warn("Phone prefix not accepted: " + user.phonePrefix);
+                                return;
+                            }
+                            if (ExtensionPoints.isControlled() && userLogic.getServicePoints(user.uid) <= 0) {
+                                LOG.warn("User has no credits: " + user.uid);
+                                return;
+                            }
+                            if (address == null || address.trim().isEmpty()) {
+                                LOG.warn("SMS address is empty; " + user.uid);
+                                return;
+                            }
+                            String phoneNumber = user.phonePrefix.trim() + address;
+                            SmsPlanetResponse response = smsService.send(
+                                    phoneNumber,
+                                    new Message(user.uid, wrapper.type + ": " + wrapper.message, wrapper.type),
+                                    false);
+                            break;
 
-                    default:
-                        LOG.warnf("Unsupported message type %1s", wrapper.type);
+                        default:
+                            LOG.warnf("Unsupported message type %1s", wrapper.type);
+                    }
                 }
             }
         }
@@ -533,7 +640,8 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
         content = content.replaceFirst("\\$user.surname", user.surname);
         content = content.replaceFirst("\\$user.uid", user.uid);
         mailerService.sendEmail(user.email, subject, content, null, null);
-        mailerService.sendEmail(user.email, subject, content, null, null); ;
+        mailerService.sendEmail(user.email, subject, content, null, null);
+        ;
     }
 
     private User getUser(User user) {
@@ -545,7 +653,12 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
         User completedUser = null;
         LOG.info("getUser " + uid);
         LOG.info("authUC " + authUC);
-        completedUser = authUC.getUser(uid);
+        try {
+            completedUser = authUC.getUser(uid);
+        } catch (Exception e) {
+            LOG.error(e.getMessage());
+            e.printStackTrace();
+        }
         // System.out.println(completedUser.toString());
         return completedUser;
     }
@@ -584,6 +697,11 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
         return false;
     }
 
+    protected boolean sendDeviceDefined(Device device, IotEvent event) {
+        // project/device implementation goes here
+        return false;
+    }
+
     @Override
     public void setMailerService(MailerService service) {
         this.mailerService = service;
@@ -609,6 +727,15 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
     public void processDataCreated(byte[] bytes) {
         String message = new String(bytes, StandardCharsets.UTF_8);
         LOG.debug("DATA_CREATED2: " + message);
+    }
+
+    private boolean isPhonePrefixAccepted(String prefix) {
+        for (String p : prefixes) {
+            if (p.equals(prefix)) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }
