@@ -149,15 +149,19 @@ public class NewsLogic {
             sendNewsToUser(news.userId, news, documents);
         } else if (news.organizationId != null && news.tenant == null) {
             // send news to organization
-            logger.info("Sending news to organization: " + news.organizationId);
+            logger.info("Sending news to organization (not implemented): " + news.organizationId);
         } else if (news.organizationId != null && news.tenant != null) {
             // send news to tenant
-            logger.info("Sending news to tenant: " + news.tenant);
+            logger.info("Sending news to tenant (not implemented): " + news.tenant);
         } else if (news.target != null) {
             // send news to target
             logger.info("Sending news to target group: " + news.target);
             sendNewsToTargetGroup(news.id, news.target, documents);
-        } else {
+        }  else if (news.type != null) {
+            // send news to target
+            logger.info("Sending news to user type: " + news.type);
+            sendNewsToUsersOfType(news.id, news.type, documents);
+        }else {
             logger.error("Unable to determine news recipients. News not sent.");
         }
 
@@ -233,6 +237,66 @@ public class NewsLogic {
             } else {
                 logger.warn("No users found for target group: " + targetGroup);
             }
+            return;
+        }
+
+        Document doc;
+        // get list of documents keys
+        List<String> languages = new ArrayList<>();
+        for (String key : documents.keySet()) {
+            languages.add(key);
+        }
+        String language;
+        for (int i = 0; i < languages.size(); i++) {
+            language = languages.get(i);
+            doc = documents.get(language);
+            // send email
+            String subject = doc.metadata.get("title");
+            if (subject == null) {
+                subject = doc.name;
+            }
+            logger.info("subject: " + subject);
+            logger.info("content: " + doc.content);
+            int maxCounter = 50;
+            int counter = 0;
+            List<String> emails = new ArrayList<>();
+            for (User user : users) {
+                if(user.email==null || user.email.isEmpty()){
+                    continue;
+                }
+                if (user.preferredLanguage.equals(language)) {
+                    saveNewsEnvelope(user, newsId, language);
+                    emails.add(user.email.trim());
+                } else if (language.equals(defaultLanguage) && !languages.contains(user.preferredLanguage)) {
+                    saveNewsEnvelope(user, newsId, language);
+                    emails.add(user.email.trim());
+                }
+                counter++;
+                if (counter > maxCounter) {
+                    mailerService.sendHtmlEmail(adminEmail, subject, doc.content, emails, null);
+                    emails.clear();
+                    counter = 0;
+                }
+            }
+            if (!emails.isEmpty()) {
+                mailerService.sendHtmlEmail(adminEmail, subject, doc.content, emails, null);
+            }
+        }
+
+    }
+
+    private void sendNewsToUsersOfType(long newsId, String type, HashMap<String, Document> documents) {
+        logger.info("Sending news to users of type: " + type);
+        List<User> users = new ArrayList<>();
+        try {
+            users = userDao.getUsers(1000,0, "type", type);
+        } catch (IotDatabaseException e) {
+            logger.warn("Error getting users for type: " + type);
+            return;
+        }
+
+        if (users == null || users.isEmpty()) {
+            logger.warn("No users found for type: " + type);
             return;
         }
 
