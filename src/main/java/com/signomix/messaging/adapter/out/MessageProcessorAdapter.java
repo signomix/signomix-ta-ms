@@ -199,6 +199,8 @@ public class MessageProcessorAdapter implements MessageProcessorIface {
                         default:
                             LOG.warnf("Unsupported message type %1s", messageType);
                     }
+                }else{
+                    LOG.warn("address null or empty");
                 }
             }
         } catch (Exception e) {
