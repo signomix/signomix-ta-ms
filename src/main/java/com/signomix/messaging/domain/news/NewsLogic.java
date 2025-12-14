@@ -1,5 +1,18 @@
 package com.signomix.messaging.domain.news;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.event.Observes;
+import javax.inject.Inject;
+
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.logging.Logger;
+
 import com.signomix.common.User;
 import com.signomix.common.db.IotDatabaseException;
 import com.signomix.common.db.NewsDaoIface;
@@ -11,18 +24,10 @@ import com.signomix.common.news.UserNewsDto;
 import com.signomix.messaging.adapter.out.HcmsService;
 import com.signomix.messaging.adapter.out.MailerService;
 import com.signomix.messaging.domain.user.UserLogic;
+
 import io.agroal.api.AgroalDataSource;
 import io.quarkus.agroal.DataSource;
 import io.quarkus.runtime.StartupEvent;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.event.Observes;
-import javax.inject.Inject;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
 @ApplicationScoped
 public class NewsLogic {
@@ -157,11 +162,11 @@ public class NewsLogic {
             // send news to target
             logger.info("Sending news to target group: " + news.target);
             sendNewsToTargetGroup(news.id, news.target, documents);
-        }  else if (news.type != null) {
-            // send news to target
-            logger.info("Sending news to user type: " + news.type);
+        } else if (news.type != null) {
+            // send news to users of type
+            //logger.info("Sending news to user type: " + news.type);
             sendNewsToUsersOfType(news.id, news.type, documents);
-        }else {
+        } else {
             logger.error("Unable to determine news recipients. News not sent.");
         }
 
@@ -222,7 +227,7 @@ public class NewsLogic {
         List<User> users = new ArrayList<>();
         try {
             if (targetGroup == null || targetGroup.isEmpty() || targetGroup.equals("*")) {
-                users = userDao.getUsers(10000,0, null, null);
+                users = userDao.getUsers(10000, 0, null, null);
             } else {
                 users = userDao.getUsersByRole(targetGroup);
             }
@@ -231,7 +236,8 @@ public class NewsLogic {
             return;
         }
 
-        if (users == null || users.isEmpty()) {
+        users = filterOutNoMailing(users);
+        if (users.isEmpty()) {
             if (targetGroup == null || targetGroup.isEmpty()) {
                 logger.warn("No users found");
             } else {
@@ -261,7 +267,7 @@ public class NewsLogic {
             int counter = 0;
             List<String> emails = new ArrayList<>();
             for (User user : users) {
-                if(user.email==null || user.email.isEmpty()){
+                if (user.email == null || user.email.isEmpty()) {
                     continue;
                 }
                 if (user.preferredLanguage.equals(language)) {
@@ -289,17 +295,17 @@ public class NewsLogic {
         logger.info("Sending news to users of type: " + type);
         List<User> users = new ArrayList<>();
         try {
-            users = userDao.getUsers(1000,0, "type", type);
+            users = userDao.getUsers(1000, 0, "type", type);
         } catch (IotDatabaseException e) {
             logger.warn("Error getting users for type: " + type);
             return;
         }
 
-        if (users == null || users.isEmpty()) {
+        users = filterOutNoMailing(users);
+        if (users.isEmpty()) {
             logger.warn("No users found for type: " + type);
             return;
         }
-
         Document doc;
         // get list of documents keys
         List<String> languages = new ArrayList<>();
@@ -321,7 +327,7 @@ public class NewsLogic {
             int counter = 0;
             List<String> emails = new ArrayList<>();
             for (User user : users) {
-                if(user.email==null || user.email.isEmpty()){
+                if (user.email == null || user.email.isEmpty()) {
                     continue;
                 }
                 if (user.preferredLanguage.equals(language)) {
@@ -343,6 +349,20 @@ public class NewsLogic {
             }
         }
 
+    }
+
+    /**
+     * Filter out users with "no_mailing" role
+     * @param users
+     * @return filtered users
+     */
+    private List<User> filterOutNoMailing(List<User> users) {
+        if (users == null) {
+            return new ArrayList<>();
+        }
+        return users.stream()
+                .filter(user -> !user.hasRole("no_mailing"))
+                .collect(Collectors.toList());
     }
 
 }
